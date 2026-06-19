@@ -18,6 +18,27 @@ npm run dev
 
 開啟 [http://localhost:3000](http://localhost:3000)
 
+## 推送到 GitHub
+
+專案已初始化 git（`main` 分支、2 個 commit）。在本機 **Terminal** 執行：
+
+```bash
+cd /Users/linsongmin/ai-will-executor
+./scripts/setup-github.sh
+```
+
+或手動推送（需先在 GitHub 建立空 repo）：
+
+1. 建立 repo：[github.com/new?name=ai-will-executor](https://github.com/new?name=ai-will-executor&owner=fallesclef)（**不要**勾選 README）
+2. 推送：
+
+```bash
+cd /Users/linsongmin/ai-will-executor
+git push -u origin main
+```
+
+Repo 位址：`https://github.com/fallesclef/ai-will-executor`
+
 ## 部署到 Vercel（推薦）
 
 1. 將此 repo 推送到 GitHub
