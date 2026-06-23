@@ -7,6 +7,7 @@ interface ChoiceButtonProps {
   onClick: () => void;
   variant?: "default" | "danger" | "primary";
   disabled?: boolean;
+  highlighted?: boolean;
 }
 
 export function ChoiceButton({
@@ -14,6 +15,7 @@ export function ChoiceButton({
   onClick,
   variant = "default",
   disabled = false,
+  highlighted = false,
 }: ChoiceButtonProps) {
   const variantClass = {
     default: "choice-btn",
@@ -24,7 +26,7 @@ export function ChoiceButton({
   return (
     <button
       type="button"
-      className={variantClass}
+      className={`${variantClass}${highlighted ? " choice-btn--glow" : ""}`}
       onClick={onClick}
       disabled={disabled}
     >
@@ -39,6 +41,7 @@ interface NavButtonProps {
   subtitle?: string;
   onClick: () => void;
   viewed?: boolean;
+  pendingChoice?: boolean;
   active?: boolean;
   disabled?: boolean;
 }
@@ -48,6 +51,7 @@ export function NavButton({
   subtitle,
   onClick,
   viewed = false,
+  pendingChoice = false,
   active = false,
   disabled = false,
 }: NavButtonProps) {
@@ -60,7 +64,18 @@ export function NavButton({
     >
       <span className="nav-btn__label">{label}</span>
       {subtitle && <span className="nav-btn__sub">{subtitle}</span>}
-      {viewed && <span className="nav-btn__badge">已閱</span>}
+      {(viewed || pendingChoice) && (
+        <span className="nav-btn__badges">
+          {viewed && (
+            <span className="nav-btn__badge nav-btn__badge--viewed">已閱</span>
+          )}
+          {pendingChoice && (
+            <span className="nav-btn__badge nav-btn__badge--pending">
+              未做出選擇
+            </span>
+          )}
+        </span>
+      )}
     </button>
   );
 }

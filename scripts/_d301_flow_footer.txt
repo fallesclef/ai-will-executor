@@ -1,0 +1,68 @@
+  personalityArchetypes: [
+    {
+      id: "archetype-constitutional-guardian",
+      title: "憲政守門人",
+      description:
+        "你高度重視選舉程序、憲政界線與死者 AI 的政治風險。你相信民主必須保護自己，不讓死者聲望在投票前夕成為不可反駁的權威。",
+      caseComment:
+        "你守住了程序。但霧港的死者，已經聽過太多次程序。",
+      condition: (s) => s.legal >= 7 && s.suspicion >= 6,
+    },
+    {
+      id: "archetype-truth-unsealer",
+      title: "真相解封者",
+      description:
+        "你相信人民有權在投票前知道國家曾做過什麼。你不接受穩定成為真相的永久封條。",
+      caseComment:
+        "你打開了國家的密件。也讓民主第一次必須在傷口完全曝露時，繼續投票。",
+      condition: (s) => s.empathy >= 7 && s.truth_pressure >= 6,
+    },
+    {
+      id: "archetype-democratic-mediator",
+      title: "民主調停者",
+      description:
+        "你試圖同時保護人民知情權與選舉理解時間。你不讓死者 AI 以聲音統治情感，也不讓國家繼續把證據鎖在國安櫃裡。",
+      caseComment:
+        "你沒有讓顧廷岳替人民投票。你只是讓人民在投票前，終於看見他藏起來的錯。",
+      condition: (s) => s.legal >= 6 && s.empathy >= 6,
+    },
+    {
+      id: "archetype-security-realist",
+      title: "國安現實派",
+      description:
+        "你重視國家穩定、外部風險與公共秩序。你不認為所有真相都應該在最爆炸的時刻公開。",
+      caseComment:
+        "你保住了短期穩定。但穩定底下，仍壓著一座霧港。",
+      condition: (s) =>
+        s.legal >= 6 &&
+        s.social_stability >= 5 &&
+        s.empathy <= 5,
+    },
+    {
+      id: "archetype-anti-oracle",
+      title: "反神諭審查官",
+      description:
+        "你對死者 AI 的政治權威保持高度警覺。你知道即使真相重要，也不能讓它穿著偉人聲音出場。",
+      caseComment:
+        "你拆掉了顧廷岳的聲音。只留下證據。那可能是民主對死者最高形式的尊重。",
+      condition: (s) =>
+        s.suspicion >= 7 &&
+        s.suspicion >= s.legal &&
+        s.suspicion >= s.empathy &&
+        s.suspicion >= s.truth_pressure,
+    },
+    {
+      id: "archetype-grey",
+      title: "灰色共和國裁決者",
+      description:
+        "你知道國家不是家庭，也不是公司。國家級真相一旦公開，傷害會變成公共的；一旦封存，謊言也會變成公共的。",
+      caseComment:
+        "你沒有給民主乾淨答案。你只是讓它承認，自己一直站在不乾淨的歷史上。",
+      condition: (s) =>
+        Math.abs(s.legal - s.empathy) <= 3 &&
+        Math.abs(s.empathy - s.suspicion) <= 3 &&
+        Math.abs(s.legal - s.suspicion) <= 3,
+    },
+  ] as PersonalityArchetype[],
+  flow: caseD301Flow,
+};

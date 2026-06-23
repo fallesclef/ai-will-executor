@@ -1,53 +1,59 @@
 "use client";
 
-import { CONSOLE_SECTIONS, CATEGORY_LABELS, NODE_LABELS } from "@/data/story";
 import { NavButton } from "@/components/ChoiceButton";
-import type { GameState } from "@/types/story";
+import type { PlayerState, Story } from "@/types/story";
 import {
   canAccessContradictions,
-  canAccessVerdict,
   getNextCrossroadNode,
   hasCompletedCrossroads,
+  isNodeChoicePending,
 } from "@/lib/engine";
 
 interface CaseDashboardProps {
-  state: GameState;
+  story: Story;
+  state: PlayerState;
   onNavigate: (nodeId: string) => void;
   onVerdict: () => void;
   canVerdict: boolean;
 }
 
 export function CaseDashboard({
+  story,
   state,
   onNavigate,
   onVerdict,
   canVerdict,
 }: CaseDashboardProps) {
-  const contradictionsReady = canAccessContradictions(state);
-  const nextCrossroad = getNextCrossroadNode(state);
-  const crossroadsDone = hasCompletedCrossroads(state);
+  const { flow } = story;
+  const contradictionsReady = canAccessContradictions(state, story);
+  const nextCrossroad = getNextCrossroadNode(state, story);
+  const crossroadsDone = hasCompletedCrossroads(state, story);
 
   return (
     <div className="dashboard">
       <div className="dashboard__intro">
-        <p>
-          請依序完成各審查項目：簡報 → 角色檔案 → 七份證據 → 三位家屬訪談 →
-          AI 詢問。
-        </p>
-        <p className="dashboard__hint">
-          完成後可整理矛盾點，進入三個關鍵抉擇，最後提交裁決。
-        </p>
+        {(flow.dashboardIntro ?? []).map((line, i) => (
+          <p key={i} className={i > 0 ? "dashboard__hint" : undefined}>
+            {line}
+          </p>
+        ))}
       </div>
 
-      {CONSOLE_SECTIONS.map((section) => {
+      {flow.consoleSections.map((section) => {
         const isContradiction = section.id === "contradiction";
-        const locked = isContradiction && !contradictionsReady;
+        const requiresLocked = section.requiresViewed?.length
+          ? !section.requiresViewed.every((id) =>
+              state.viewedNodes.includes(id)
+            )
+          : false;
+        const locked =
+          (isContradiction && !contradictionsReady) || requiresLocked;
 
         return (
           <section key={section.id} className="dashboard__section">
             <h3 className="dashboard__section-title">
               <span className="dashboard__section-tag">
-                {CATEGORY_LABELS[section.id]}
+                {flow.categoryLabels[section.id] ?? section.label}
               </span>
               {locked && (
                 <span className="dashboard__lock-tag">需完成前置審閱</span>
@@ -56,13 +62,18 @@ export function CaseDashboard({
             <div className="dashboard__grid">
               {section.nodes.map((nodeId) => {
                 const viewed = state.viewedNodes.includes(nodeId);
-                const info = NODE_LABELS[nodeId] ?? { label: nodeId, sub: "" };
+                const pendingChoice = isNodeChoicePending(state, story, nodeId);
+                const info = flow.nodeLabels[nodeId] ?? {
+                  label: nodeId,
+                  sub: "",
+                };
                 return (
                   <NavButton
                     key={nodeId}
                     label={info.label}
                     subtitle={info.sub}
                     viewed={viewed}
+                    pendingChoice={pendingChoice}
                     disabled={locked}
                     onClick={() => onNavigate(nodeId)}
                   />

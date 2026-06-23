@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { story } from "@/data/story";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import Link from "next/link";
+import type { Story, PlayerState, Choice } from "@/types/story";
 import {
   createInitialState,
   gameReducer,
@@ -9,48 +10,90 @@ import {
   loadGame,
   clearSave,
   canAccessVerdict,
+  canUnlockSecretVerdict,
+  canUnlockHiddenEnding,
   resolvePersonality,
   getVerdictLabel,
   isOnboardingNode,
   isHubNode,
 } from "@/lib/engine";
 import { resolveNodeContent } from "@/lib/nodes";
-import type { GameState, Choice } from "@/types/story";
+import { predictCrossroadChoice } from "@/lib/season-history";
 import { StatusPanel } from "@/components/StatusPanel";
 import { NodeView } from "@/components/NodeView";
 import { CaseDashboard } from "@/components/CaseDashboard";
+import { getLocalPlayerId, registerPlayer } from "@/lib/player/client";
+import { queueSync } from "@/lib/sync/client";
+import { getStory } from "@/data/cases";
 
-const RETURN_TO_CONSOLE_CATEGORIES = new Set([
-  "brief",
-  "profile",
-  "evidence",
-  "interview",
-  "ai_inquiry",
-]);
+interface GameShellProps {
+  caseId: string;
+}
 
-export function GameShell() {
-  const [state, setState] = useState<GameState>(() => createInitialState(story));
+export function GameShell({ caseId }: GameShellProps) {
+  const story = getStory(caseId);
+
+  if (!story) {
+    return (
+      <div className="game-loading">
+        <p className="game-loading__text">案件不存在</p>
+        <Link href="/" className="choice-btn" style={{ marginTop: "1rem" }}>
+          返回案件大廳
+        </Link>
+      </div>
+    );
+  }
+
+  return <GameShellContent story={story} />;
+}
+
+function GameShellContent({ story }: { story: Story }) {
+  const [state, setState] = useState<PlayerState>(() =>
+    createInitialState(story, getLocalPlayerId())
+  );
   const [hydrated, setHydrated] = useState(false);
+  const [verdictDwellReady, setVerdictDwellReady] = useState(false);
+  const { flow } = story;
 
   useEffect(() => {
-    const saved = loadGame();
+    void registerPlayer();
+    const saved = loadGame(story.id);
     if (saved) {
-      setState(saved);
+      setState({ ...saved, playerId: saved.playerId || getLocalPlayerId() });
     }
     setHydrated(true);
-  }, []);
+  }, [story.id]);
 
   useEffect(() => {
     if (hydrated) {
       saveGame(state);
+      queueSync(state);
     }
   }, [state, hydrated]);
 
   const dispatch = useCallback(
     (action: Parameters<typeof gameReducer>[1]) => {
-      setState((prev) => gameReducer(prev, action, story));
+      setState((prev) => {
+        const next = gameReducer(prev, action, story);
+        if (action.type === "CHOICE") {
+          queueSync(next, {
+            type: "choice",
+            nodeId: next.currentNodeId,
+            choiceId: action.choiceId,
+          });
+        } else if (action.type === "VERDICT") {
+          queueSync(next, {
+            type: "complete",
+            choiceId: action.choiceId,
+            endingId: next.endingId ?? undefined,
+          });
+        } else if (action.type === "NAVIGATE") {
+          queueSync(next, { type: "navigate", nodeId: action.nodeId });
+        }
+        return next;
+      });
     },
-    []
+    [story]
   );
 
   const handleNavigate = (nodeId: string) => {
@@ -60,7 +103,7 @@ export function GameShell() {
   const handleChoice = (choice: Choice) => {
     if (state.phase === "ending") return;
 
-    if (state.currentNodeId === "verdict") {
+    if (state.currentNodeId === flow.verdictNodeId) {
       dispatch({
         type: "VERDICT",
         choiceId: choice.id,
@@ -79,27 +122,84 @@ export function GameShell() {
 
     if (!choice.nextNodeId) {
       const node = story.nodes[state.currentNodeId];
-      if (node && RETURN_TO_CONSOLE_CATEGORIES.has(node.category)) {
+      if (node && flow.returnToHubCategories.includes(node.category)) {
         setTimeout(() => {
-          dispatch({ type: "NAVIGATE", nodeId: "console" });
+          dispatch({ type: "NAVIGATE", nodeId: flow.hubNodeId });
         }, 0);
       }
     }
   };
 
   const handleReset = () => {
-    clearSave();
-    setState(createInitialState(story));
+    clearSave(story.id);
+    setState(createInitialState(story, state.playerId));
   };
 
-  const verdictReady = canAccessVerdict(state);
+  const verdictReady = canAccessVerdict(state, story);
   const currentNode = story.nodes[state.currentNodeId];
   const nodeContent = currentNode
-    ? resolveNodeContent(currentNode, state)
+    ? resolveNodeContent(currentNode, state, story)
     : [];
+  const secretUnlocked = canUnlockSecretVerdict(state, story);
+  const secretVerdict = flow.secretVerdict;
+
+  useEffect(() => {
+    if (state.currentNodeId !== flow.verdictNodeId) {
+      setVerdictDwellReady(false);
+      return;
+    }
+    if (!secretVerdict || !secretUnlocked) {
+      setVerdictDwellReady(false);
+      return;
+    }
+    const dwell = secretVerdict.dwellMs ?? 8000;
+    const timer = window.setTimeout(() => setVerdictDwellReady(true), dwell);
+    return () => window.clearTimeout(timer);
+  }, [
+    state.currentNodeId,
+    flow.verdictNodeId,
+    secretVerdict,
+    secretUnlocked,
+  ]);
+
+  const displayChoices = useMemo(() => {
+    if (!currentNode?.choices) return undefined;
+    if (state.currentNodeId !== flow.verdictNodeId || !secretVerdict) {
+      return currentNode.choices;
+    }
+    return currentNode.choices.filter((c) => {
+      if (c.id === secretVerdict.choiceId) {
+        return secretUnlocked && verdictDwellReady;
+      }
+      return true;
+    });
+  }, [
+    currentNode,
+    state.currentNodeId,
+    flow.verdictNodeId,
+    secretVerdict,
+    secretUnlocked,
+    verdictDwellReady,
+  ]);
+
+  const crossroadPrediction =
+    flow.predictionEnabled &&
+    flow.crossroadNodeIds.includes(state.currentNodeId)
+      ? predictCrossroadChoice(state.currentNodeId, state)
+      : null;
+
+  const interfaceGlowChoiceId =
+    flow.predictionEnabled &&
+    flow.crossroadNodeIds.includes(state.currentNodeId) &&
+    crossroadPrediction
+      ? crossroadPrediction.choiceId
+      : undefined;
   const ending = state.endingId
     ? story.endings.find((e) => e.id === state.endingId)
     : null;
+  const hiddenEndingActive =
+    !!state.verdictChoiceId &&
+    canUnlockHiddenEnding(state, story, state.verdictChoiceId);
   const personality =
     state.phase === "ending"
       ? resolvePersonality(state.stats, story.personalityArchetypes)
@@ -126,7 +226,9 @@ export function GameShell() {
         <main className="game-main game-main--ending">
           <article className="ending-view">
             {ending.isHidden && (
-              <div className="ending-view__hidden-badge">隱藏結局解鎖</div>
+              <div className="ending-view__hidden-badge">
+                {hiddenEndingActive ? "真結局解鎖" : "隱藏結局解鎖"}
+              </div>
             )}
             <header className="ending-view__header">
               <span className="ending-view__subtitle">{ending.subtitle}</span>
@@ -145,30 +247,30 @@ export function GameShell() {
                   {p}
                 </p>
               ))}
-              {ending.id === "ending-hidden" &&
-                state.verdictChoiceId === "verdict-approve" &&
-                ending.epilogueApprove?.map((p, i) => (
-                  <p
-                    key={`ep-a-${i}`}
-                    className={
-                      p === "" ? "node-view__spacer" : "node-view__paragraph"
+              {ending.isHidden &&
+                (() => {
+                  const vid = state.verdictChoiceId;
+                  let extra: string[] | undefined;
+                  if (vid) {
+                    extra = ending.epilogueForVerdict?.[vid];
+                    if (!extra && vid === "verdict-approve") {
+                      extra = ending.epilogueApprove;
                     }
-                  >
-                    {p}
-                  </p>
-                ))}
-              {ending.id === "ending-hidden" &&
-                state.verdictChoiceId === "verdict-seal" &&
-                ending.epilogueSeal?.map((p, i) => (
-                  <p
-                    key={`ep-s-${i}`}
-                    className={
-                      p === "" ? "node-view__spacer" : "node-view__paragraph"
+                    if (!extra && vid === "verdict-seal") {
+                      extra = ending.epilogueSeal;
                     }
-                  >
-                    {p}
-                  </p>
-                ))}
+                  }
+                  return extra?.map((p, i) => (
+                    <p
+                      key={`ep-h-${i}`}
+                      className={
+                        p === "" ? "node-view__spacer" : "node-view__paragraph"
+                      }
+                    >
+                      {p}
+                    </p>
+                  ));
+                })()}
             </div>
 
             {personality && (
@@ -176,7 +278,7 @@ export function GameShell() {
                 <h3 className="personality-report__title">裁決人格報告</h3>
                 <div className="personality-report__card">
                   <p className="personality-report__verdict">
-                    你的裁決：{getVerdictLabel(state.verdictChoiceId)}
+                    你的裁決：{getVerdictLabel(story, state.verdictChoiceId)}
                   </p>
                   <span className="personality-report__archetype">
                     {personality.title}
@@ -191,6 +293,16 @@ export function GameShell() {
                     <span>法理 {state.stats.legal}</span>
                     <span>共感 {state.stats.empathy}</span>
                     <span>懷疑 {state.stats.suspicion}</span>
+                    {story.flow.publicStatsEnabled && (
+                      <>
+                        <span>民主信任 {state.stats.public_trust}</span>
+                        <span>社會穩定 {state.stats.social_stability}</span>
+                        <span>真相壓力 {state.stats.truth_pressure}</span>
+                      </>
+                    )}
+                    {story.flow.mirrorStatsEnabled && (
+                      <span>鏡像完整度 {state.stats.mirror_integrity}</span>
+                    )}
                   </div>
                 </div>
               </section>
@@ -208,18 +320,18 @@ export function GameShell() {
     );
   }
 
-  const isOnboarding = isOnboardingNode(state.currentNodeId);
-  const isConsole = isHubNode(state.currentNodeId);
-  const isVerdict = state.currentNodeId === "verdict";
-  const isCrossroad = state.currentNodeId.startsWith("crossroad_");
+  const onboarding = isOnboardingNode(story, state.currentNodeId);
+  const isConsole = isHubNode(story, state.currentNodeId);
+  const isVerdict = state.currentNodeId === flow.verdictNodeId;
+  const isCrossroad = flow.crossroadNodeIds.includes(state.currentNodeId);
   const showBack =
-    !isOnboarding &&
+    !onboarding &&
     !isConsole &&
     !isVerdict &&
     !isCrossroad &&
     currentNode?.category !== "contradiction";
 
-  if (isOnboarding) {
+  if (onboarding) {
     return (
       <div className="game-shell game-shell--onboarding">
         <header className="game-header game-header--onboarding">
@@ -231,8 +343,9 @@ export function GameShell() {
               title={currentNode.title}
               subtitle={currentNode.subtitle}
               category={currentNode.category}
+              categoryLabels={flow.categoryLabels}
               content={nodeContent}
-              choices={currentNode.choices}
+              choices={displayChoices ?? currentNode.choices}
               onChoice={handleChoice}
               isVerdict={false}
             />
@@ -245,6 +358,14 @@ export function GameShell() {
     );
   }
 
+  const verdictHint =
+    state.currentNodeId === flow.verdictNodeId &&
+    secretVerdict &&
+    secretUnlocked &&
+    !verdictDwellReady
+      ? "【系統】偵測到未解鎖裁決選項……請在當前畫面停留，勿急於提交。"
+      : undefined;
+
   return (
     <div className="game-shell">
       <header className="game-header">
@@ -254,6 +375,9 @@ export function GameShell() {
           <p className="game-header__subtitle">{story.subtitle}</p>
         </div>
         <div className="game-header__actions">
+          <Link href="/" className="header-btn header-btn--link">
+            案件列表
+          </Link>
           <button type="button" className="header-btn" onClick={handleReset}>
             重置案件
           </button>
@@ -271,9 +395,10 @@ export function GameShell() {
                 <span className="main-content__id">{story.caseNumber}</span>
               </header>
               <CaseDashboard
+                story={story}
                 state={state}
                 onNavigate={handleNavigate}
-                onVerdict={() => handleNavigate("verdict")}
+                onVerdict={() => handleNavigate(flow.verdictNodeId)}
                 canVerdict={verdictReady}
               />
             </div>
@@ -283,13 +408,21 @@ export function GameShell() {
                 title={currentNode.title}
                 subtitle={currentNode.subtitle}
                 category={currentNode.category}
+                categoryLabels={flow.categoryLabels}
                 content={nodeContent}
-                choices={currentNode.choices}
+                choices={displayChoices}
                 onChoice={handleChoice}
-                onBack={() => handleNavigate("console")}
+                onBack={() => handleNavigate(flow.hubNodeId)}
                 showBack={showBack}
                 isVerdict={isVerdict}
                 isCrossroad={isCrossroad}
+                predictionLabel={
+                  crossroadPrediction
+                    ? `AI Vincent 預測：${crossroadPrediction.label}`
+                    : undefined
+                }
+                interfaceGlowChoiceId={interfaceGlowChoiceId}
+                verdictHint={verdictHint}
               />
             </div>
           ) : (

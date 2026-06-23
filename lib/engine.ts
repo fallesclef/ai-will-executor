@@ -1,38 +1,55 @@
-import type { GameState, StatDelta, StatKey, Story, PersonalityArchetype } from "@/types/story";
+import type {
+  PlayerState,
+  StatDelta,
+  StatKey,
+  Story,
+  StoryNode,
+  Choice,
+  PersonalityArchetype,
+  CaseFlow,
+} from "@/types/story";
 import { INITIAL_STATS } from "@/types/story";
-import {
-  EVIDENCE_NODE_IDS,
-  INTERVIEW_NODE_IDS,
-  PROFILE_NODE_IDS,
-  AI_NODE_IDS,
-  CROSSROAD_CHOICE_PREFIXES,
-} from "@/data/story";
+import { DEFAULT_CASE_ID, getStory } from "@/data/cases";
+import { computeBaselineMirrorIntegrity } from "@/lib/season-history";
 
-const STORAGE_KEY = "ai-will-executor-v03-save";
+const STORAGE_PREFIX = "ai-will-executor-v04";
 
-const ONBOARDING_NODES = new Set(["start", "case_login", "rules"]);
-const HUB_NODES = new Set(["console"]);
-
-export function isOnboardingNode(nodeId: string): boolean {
-  return ONBOARDING_NODES.has(nodeId);
+function storageKey(storyId: string): string {
+  return `${STORAGE_PREFIX}:${storyId}`;
 }
 
-export function isHubNode(nodeId: string): boolean {
-  return HUB_NODES.has(nodeId);
+export function isOnboardingNode(story: Story, nodeId: string): boolean {
+  return story.flow.onboardingNodeIds.includes(nodeId);
 }
 
-export function createInitialState(story: Story): GameState {
+export function isHubNode(story: Story, nodeId: string): boolean {
+  return nodeId === story.flow.hubNodeId;
+}
+
+export function createInitialState(
+  story: Story,
+  playerId: string
+): PlayerState {
+  const stats = { ...INITIAL_STATS };
+  if (story.id === "case-d399") {
+    stats.mirror_integrity = computeBaselineMirrorIntegrity();
+  }
+  const now = new Date().toISOString();
   return {
+    storyId: story.id,
+    playerId,
     currentNodeId: story.startNodeId,
-    stats: { ...INITIAL_STATS },
+    stats,
     viewedNodes: [story.startNodeId],
     choiceHistory: [],
+    nodeChoices: {},
     flags: [],
     phase: "intro",
     endingId: null,
     verdictChoiceId: null,
-    startedAt: new Date().toISOString(),
+    startedAt: now,
     completedAt: null,
+    updatedAt: now,
   };
 }
 
@@ -40,7 +57,15 @@ export function applyStatDelta(
   stats: Record<StatKey, number>,
   delta: StatDelta
 ): Record<StatKey, number> {
-  const keys: StatKey[] = ["legal", "empathy", "suspicion"];
+  const keys: StatKey[] = [
+    "legal",
+    "empathy",
+    "suspicion",
+    "public_trust",
+    "social_stability",
+    "truth_pressure",
+    "mirror_integrity",
+  ];
   const next = { ...stats };
   for (const key of keys) {
     if (delta[key] !== undefined) {
@@ -50,99 +75,305 @@ export function applyStatDelta(
   return next;
 }
 
-export function hasViewedAll(state: GameState, nodeIds: string[]): boolean {
+export function negateStatDelta(delta: StatDelta): StatDelta {
+  const result: StatDelta = {};
+  const keys: StatKey[] = [
+    "legal",
+    "empathy",
+    "suspicion",
+    "public_trust",
+    "social_stability",
+    "truth_pressure",
+    "mirror_integrity",
+  ];
+  for (const key of keys) {
+    if (delta[key] !== undefined) {
+      result[key] = -delta[key]!;
+    }
+  }
+  return result;
+}
+
+export function hasStatOrFlagEffects(choice: Choice): boolean {
+  return (
+    choice.effects.legal !== undefined ||
+    choice.effects.empathy !== undefined ||
+    choice.effects.suspicion !== undefined ||
+    choice.effects.public_trust !== undefined ||
+    choice.effects.social_stability !== undefined ||
+    choice.effects.truth_pressure !== undefined ||
+    choice.effects.mirror_integrity !== undefined ||
+    (choice.flags?.length ?? 0) > 0
+  );
+}
+
+export function isNavigationChoice(choice: Choice): boolean {
+  return choice.id === "back-console" || choice.id.endsWith("-back");
+}
+
+/** 節點是否需要玩家做出選擇（含閱讀後按返回、或證據/訪談的審查選項） */
+export function nodeRequiresChoice(node: StoryNode | undefined): boolean {
+  if (!node?.choices?.length) return false;
+  if (node.choices.some(hasStatOrFlagEffects)) return true;
+  return node.choices.every(isNavigationChoice);
+}
+
+export function isNodeChoicePending(
+  state: PlayerState,
+  story: Story,
+  nodeId: string
+): boolean {
+  const node = story.nodes[nodeId];
+  if (!state.viewedNodes.includes(nodeId)) return false;
+  if (!nodeRequiresChoice(node)) return false;
+  return !state.nodeChoices[nodeId];
+}
+
+function findChoiceOnNode(
+  story: Story,
+  nodeId: string,
+  choiceId: string
+): Choice | undefined {
+  return story.nodes[nodeId]?.choices?.find((c) => c.id === choiceId);
+}
+
+function inferNodeChoicesFromHistory(
+  story: Story,
+  choiceHistory: string[]
+): Record<string, string> {
+  const result: Record<string, string> = {};
+  for (const [nodeId, node] of Object.entries(story.nodes)) {
+    const matches = (node.choices ?? []).filter((c) =>
+      choiceHistory.includes(c.id)
+    );
+    if (matches.length === 0) continue;
+    const last = matches.reduce((best, c) =>
+      choiceHistory.lastIndexOf(c.id) > choiceHistory.lastIndexOf(best.id)
+        ? c
+        : best
+    );
+    result[nodeId] = last.id;
+  }
+  return result;
+}
+
+type ChoiceAction = {
+  type: "CHOICE";
+  choiceId: string;
+  effects: StatDelta;
+  nextNodeId?: string;
+  flags?: string[];
+};
+
+function applyChoiceWithReversal(
+  state: PlayerState,
+  story: Story,
+  nodeId: string,
+  action: ChoiceAction
+): Pick<PlayerState, "stats" | "flags" | "choiceHistory" | "nodeChoices"> {
+  const node = story.nodes[nodeId];
+  const newChoice = findChoiceOnNode(story, nodeId, action.choiceId);
+  if (!node || !newChoice) {
+    return {
+      stats: applyStatDelta(state.stats, action.effects),
+      flags: action.flags
+        ? [...new Set([...state.flags, ...action.flags])]
+        : state.flags,
+      choiceHistory: [...state.choiceHistory, action.choiceId],
+      nodeChoices: state.nodeChoices,
+    };
+  }
+
+  let stats = state.stats;
+  let flags = [...state.flags];
+  let choiceHistory = [...state.choiceHistory];
+  const nodeChoices = { ...state.nodeChoices };
+  const prevChoiceId = nodeChoices[nodeId];
+
+  if (hasStatOrFlagEffects(newChoice)) {
+    if (prevChoiceId === action.choiceId) {
+      return { stats, flags, choiceHistory, nodeChoices };
+    }
+    if (prevChoiceId) {
+      const prevChoice = findChoiceOnNode(story, nodeId, prevChoiceId);
+      if (prevChoice) {
+        stats = applyStatDelta(stats, negateStatDelta(prevChoice.effects));
+        if (prevChoice.flags) {
+          flags = flags.filter((f) => !prevChoice.flags!.includes(f));
+        }
+        choiceHistory = choiceHistory.filter((id) => id !== prevChoiceId);
+      }
+    }
+    stats = applyStatDelta(stats, action.effects);
+    if (action.flags) {
+      flags = [...new Set([...flags, ...action.flags])];
+    }
+    choiceHistory.push(action.choiceId);
+    nodeChoices[nodeId] = action.choiceId;
+  } else if (
+    isNavigationChoice(newChoice) &&
+    nodeRequiresChoice(node) &&
+    !node.choices!.some(hasStatOrFlagEffects)
+  ) {
+    nodeChoices[nodeId] = action.choiceId;
+  } else {
+    stats = applyStatDelta(stats, action.effects);
+    if (action.flags) {
+      flags = [...new Set([...flags, ...action.flags])];
+    }
+    choiceHistory.push(action.choiceId);
+  }
+
+  return { stats, flags, choiceHistory, nodeChoices };
+}
+
+export function hasViewedAll(state: PlayerState, nodeIds: string[]): boolean {
   const viewed = new Set(state.viewedNodes);
   return nodeIds.every((id) => viewed.has(id));
 }
 
-export function hasCompletedAiInquiry(state: GameState): boolean {
-  return hasViewedAll(state, AI_NODE_IDS);
+function getInvestigation(flow: CaseFlow) {
+  return flow.investigation;
 }
 
-export function hasCompletedInvestigation(state: GameState): boolean {
+export function hasCompletedAiInquiry(
+  state: PlayerState,
+  story: Story
+): boolean {
+  return hasViewedAll(state, getInvestigation(story.flow).aiNodeIds);
+}
+
+export function hasCompletedInvestigation(
+  state: PlayerState,
+  story: Story
+): boolean {
+  const inv = getInvestigation(story.flow);
   return (
-    hasViewedAll(state, EVIDENCE_NODE_IDS) &&
-    hasViewedAll(state, INTERVIEW_NODE_IDS) &&
-    hasViewedAll(state, PROFILE_NODE_IDS) &&
-    state.viewedNodes.includes("brief") &&
-    hasCompletedAiInquiry(state)
+    hasViewedAll(state, inv.evidenceNodeIds) &&
+    hasViewedAll(state, inv.interviewNodeIds) &&
+    hasViewedAll(state, inv.profileNodeIds) &&
+    state.viewedNodes.includes(inv.briefNodeId) &&
+    hasCompletedAiInquiry(state, story)
   );
 }
 
-export function hasCompletedCrossroads(state: GameState): boolean {
-  return CROSSROAD_CHOICE_PREFIXES.every((prefix) =>
+export function hasCompletedCrossroads(
+  state: PlayerState,
+  story: Story
+): boolean {
+  return story.flow.crossroadChoicePrefixes.every((prefix) =>
     state.choiceHistory.some((id) => id.startsWith(prefix))
   );
 }
 
-export function canAccessContradictions(state: GameState): boolean {
-  return hasCompletedInvestigation(state);
+export function canAccessContradictions(
+  state: PlayerState,
+  story: Story
+): boolean {
+  return hasCompletedInvestigation(state, story);
 }
 
-export function canAccessCrossroads(state: GameState): boolean {
-  return state.viewedNodes.includes("contradictions");
+export function canAccessCrossroads(
+  state: PlayerState,
+  story: Story
+): boolean {
+  return state.viewedNodes.includes(story.flow.contradictionsNodeId);
 }
 
-export function canAccessVerdict(state: GameState): boolean {
-  return hasCompletedCrossroads(state);
+export function canAccessVerdict(state: PlayerState, story: Story): boolean {
+  return hasCompletedCrossroads(state, story);
 }
 
-export function getInvestigationProgress(state: GameState): {
+export function getInvestigationProgress(
+  state: PlayerState,
+  story: Story
+): {
   profiles: number;
   evidence: number;
   interviews: number;
   ai: boolean;
   brief: boolean;
 } {
+  const inv = getInvestigation(story.flow);
   const viewed = new Set(state.viewedNodes);
   return {
-    brief: viewed.has("brief"),
-    profiles: PROFILE_NODE_IDS.filter((id) => viewed.has(id)).length,
-    evidence: EVIDENCE_NODE_IDS.filter((id) => viewed.has(id)).length,
-    interviews: INTERVIEW_NODE_IDS.filter((id) => viewed.has(id)).length,
-    ai: hasCompletedAiInquiry(state),
+    brief: viewed.has(inv.briefNodeId),
+    profiles: inv.profileNodeIds.filter((id) => viewed.has(id)).length,
+    evidence: inv.evidenceNodeIds.filter((id) => viewed.has(id)).length,
+    interviews: inv.interviewNodeIds.filter((id) => viewed.has(id)).length,
+    ai: hasCompletedAiInquiry(state, story),
   };
 }
 
-function canUnlockHiddenEnding(
-  state: GameState,
-  verdictChoiceId: string
+function matchesHiddenFlags(
+  rule: NonNullable<Story["flow"]["hiddenEnding"]>,
+  flags: Set<string>
 ): boolean {
+  const flagsOk =
+    (!rule.requiredFlagsAny?.length ||
+      rule.requiredFlagsAny.some((f) => flags.has(f))) &&
+    (!rule.requiredFlagsAllGroups?.length ||
+      rule.requiredFlagsAllGroups.every((group) =>
+        group.some((f) => flags.has(f))
+      ));
+  return flagsOk;
+}
+
+export function canUnlockSecretVerdict(
+  state: PlayerState,
+  story: Story
+): boolean {
+  const rule = story.flow.hiddenEnding;
+  if (!rule || !story.flow.secretVerdict) return false;
+
   const viewed = new Set(state.viewedNodes);
   const flags = new Set(state.flags);
+
   return (
-    viewed.has("evidence_01") &&
-    viewed.has("evidence_02") &&
-    viewed.has("evidence_06") &&
-    viewed.has("ai_q04") &&
-    (flags.has("recognize_ai_request") ||
-      flags.has("conditional_ai_request")) &&
-    (verdictChoiceId === "verdict-approve" ||
-      verdictChoiceId === "verdict-seal")
+    rule.requiredViewed.every((id) => viewed.has(id)) &&
+    matchesHiddenFlags(rule, flags)
+  );
+}
+
+export function canUnlockHiddenEnding(
+  state: PlayerState,
+  story: Story,
+  verdictChoiceId: string
+): boolean {
+  const rule = story.flow.hiddenEnding;
+  if (!rule) return false;
+
+  const viewed = new Set(state.viewedNodes);
+  const flags = new Set(state.flags);
+
+  return (
+    rule.requiredViewed.every((id) => viewed.has(id)) &&
+    matchesHiddenFlags(rule, flags) &&
+    rule.requiredVerdicts.includes(verdictChoiceId)
   );
 }
 
 export function resolveEnding(
-  state: GameState,
-  _story: Story,
+  state: PlayerState,
+  story: Story,
   verdictChoiceId: string
 ): string {
-  if (canUnlockHiddenEnding(state, verdictChoiceId)) {
-    return "ending-hidden";
+  const secret = story.flow.secretVerdict;
+  if (secret && verdictChoiceId === secret.choiceId) {
+    if (canUnlockHiddenEnding(state, story, verdictChoiceId)) {
+      return story.flow.hiddenEnding!.endingId;
+    }
+    return secret.endingId;
   }
 
-  switch (verdictChoiceId) {
-    case "verdict-approve":
-      return "ending-approve";
-    case "verdict-deny":
-      return "ending-deny";
-    case "verdict-suspend":
-      return "ending-suspend";
-    case "verdict-seal":
-      return "ending-seal";
-    default:
-      return "ending-suspend";
+  if (canUnlockHiddenEnding(state, story, verdictChoiceId)) {
+    return story.flow.hiddenEnding!.endingId;
   }
+
+  const match = story.flow.verdictOptions.find(
+    (v) => v.choiceId === verdictChoiceId
+  );
+  return match?.endingId ?? story.flow.verdictOptions[0]?.endingId ?? "ending-suspend";
 }
 
 export function resolvePersonality(
@@ -156,50 +387,78 @@ export function resolvePersonality(
   return archetypes.find((a) => a.id === "archetype-grey")!;
 }
 
-export function getVerdictLabel(verdictChoiceId: string | null): string {
-  switch (verdictChoiceId) {
-    case "verdict-approve":
-      return "核准刪除";
-    case "verdict-deny":
-      return "駁回刪除";
-    case "verdict-suspend":
-      return "暫緩三十天";
-    case "verdict-seal":
-      return "封存不刪除";
-    default:
-      return "—";
-  }
+export function getVerdictLabel(
+  story: Story,
+  verdictChoiceId: string | null
+): string {
+  if (!verdictChoiceId) return "—";
+  const match = story.flow.verdictOptions.find(
+    (v) => v.choiceId === verdictChoiceId
+  );
+  return match?.label ?? "—";
 }
 
-export function saveGame(state: GameState): void {
+export function saveGame(state: PlayerState): void {
   if (typeof window === "undefined") return;
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    localStorage.setItem(storageKey(state.storyId), JSON.stringify(state));
   } catch {
     // storage full or unavailable
   }
 }
 
-export function loadGame(): GameState | null {
-  if (typeof window === "undefined") return null;
+
+function migrateLegacySave(raw: string, storyId: string): PlayerState | null {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as GameState;
+    const parsed = JSON.parse(raw) as PlayerState & { storyId?: string };
+    if (!parsed.currentNodeId) return null;
+    if (!parsed.storyId) parsed.storyId = storyId;
+    if (!parsed.playerId) parsed.playerId = "legacy-local";
+    if (!parsed.updatedAt) {
+      parsed.updatedAt = parsed.startedAt ?? new Date().toISOString();
+    }
     if (!parsed.phase) {
-      parsed.phase = isOnboardingNode(parsed.currentNodeId) ? "intro" : "explore";
+      const onboarding = new Set(["start", "case_login", "rules"]);
+      parsed.phase = onboarding.has(parsed.currentNodeId) ? "intro" : "explore";
     }
     if (!parsed.flags) parsed.flags = [];
     if (!parsed.verdictChoiceId) parsed.verdictChoiceId = null;
+    if (!parsed.nodeChoices) {
+      const story = getStory(storyId);
+      parsed.nodeChoices = story
+        ? inferNodeChoicesFromHistory(story, parsed.choiceHistory ?? [])
+        : {};
+    }
+    parsed.stats = { ...INITIAL_STATS, ...parsed.stats };
     return parsed;
   } catch {
     return null;
   }
 }
 
-export function clearSave(): void {
+export function loadGame(storyId: string): PlayerState | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw =
+      localStorage.getItem(storageKey(storyId)) ??
+      (storyId === DEFAULT_CASE_ID
+        ? localStorage.getItem("ai-will-executor-v03-save")
+        : null);
+    if (!raw) return null;
+    const parsed = migrateLegacySave(raw, storyId);
+    if (!parsed || parsed.storyId !== storyId) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+export function clearSave(storyId: string): void {
   if (typeof window === "undefined") return;
-  localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem(storageKey(storyId));
+  if (storyId === DEFAULT_CASE_ID) {
+    localStorage.removeItem("ai-will-executor-v03-save");
+  }
 }
 
 export type GameAction =
@@ -215,59 +474,57 @@ export type GameAction =
   | { type: "RESET" };
 
 function resolvePhase(
+  story: Story,
   nodeId: string,
   choiceId?: string
-): GameState["phase"] {
-  if (nodeId === "verdict") return "verdict";
+): PlayerState["phase"] {
+  const { flow } = story;
+  if (nodeId === flow.verdictNodeId) return "verdict";
   if (choiceId?.startsWith("crossroad-")) return "crossroad";
-  if (isOnboardingNode(nodeId)) return "intro";
-  if (nodeId.startsWith("crossroad_")) return "crossroad";
+  if (flow.onboardingNodeIds.includes(nodeId)) return "intro";
+  if (flow.crossroadNodeIds.includes(nodeId)) return "crossroad";
   return "explore";
 }
 
 export function gameReducer(
-  state: GameState,
+  state: PlayerState,
   action: GameAction,
   story: Story
-): GameState {
+): PlayerState {
+  const now = new Date().toISOString();
+  const { flow } = story;
+
   switch (action.type) {
     case "NAVIGATE": {
       const viewed = state.viewedNodes.includes(action.nodeId)
         ? state.viewedNodes
         : [...state.viewedNodes, action.nodeId];
-      const phase =
-        action.nodeId === "verdict"
-          ? "verdict"
-          : isOnboardingNode(action.nodeId)
-            ? "intro"
-            : action.nodeId.startsWith("crossroad_")
-              ? "crossroad"
-              : "explore";
+      const phase = resolvePhase(story, action.nodeId);
       return {
         ...state,
         currentNodeId: action.nodeId,
         viewedNodes: viewed,
         phase,
+        updatedAt: now,
       };
     }
 
     case "CHOICE": {
+      const nodeId = state.currentNodeId;
       const nextNodeId = action.nextNodeId ?? state.currentNodeId;
       const viewed = state.viewedNodes.includes(nextNodeId)
         ? state.viewedNodes
         : [...state.viewedNodes, nextNodeId];
-      const phase = resolvePhase(nextNodeId, action.choiceId);
-      const flags = action.flags
-        ? [...new Set([...state.flags, ...action.flags])]
-        : state.flags;
+      const phase = resolvePhase(story, nextNodeId, action.choiceId);
+      const applied = applyChoiceWithReversal(state, story, nodeId, action);
       return {
         ...state,
-        stats: applyStatDelta(state.stats, action.effects),
-        choiceHistory: [...state.choiceHistory, action.choiceId],
-        flags,
+        ...applied,
         currentNodeId: nextNodeId,
         viewedNodes: viewed,
-        phase: phase === "intro" && nextNodeId === "console" ? "explore" : phase,
+        phase:
+          phase === "intro" && nextNodeId === flow.hubNodeId ? "explore" : phase,
+        updatedAt: now,
       };
     }
 
@@ -285,12 +542,13 @@ export function gameReducer(
         phase: "ending",
         endingId,
         verdictChoiceId: action.choiceId,
-        completedAt: new Date().toISOString(),
+        completedAt: now,
+        updatedAt: now,
       };
     }
 
     case "RESET":
-      return createInitialState(story);
+      return createInitialState(story, state.playerId);
 
     default:
       return state;
@@ -298,46 +556,61 @@ export function gameReducer(
 }
 
 export function getFlowStepStatus(
-  state: GameState
+  state: PlayerState,
+  story: Story
 ): Record<string, boolean> {
-  const progress = getInvestigationProgress(state);
+  const progress = getInvestigationProgress(state, story);
+  const { flow } = story;
+  const inv = flow.investigation;
+
   return {
     start: state.viewedNodes.includes("start"),
     case_login: state.viewedNodes.includes("case_login"),
     rules: state.viewedNodes.includes("rules"),
-    console: state.viewedNodes.includes("console"),
+    console: state.viewedNodes.includes(flow.hubNodeId),
     brief: progress.brief,
-    profile: progress.profiles === PROFILE_NODE_IDS.length,
-    evidence: progress.evidence === EVIDENCE_NODE_IDS.length,
-    interview: progress.interviews === INTERVIEW_NODE_IDS.length,
+    profile: progress.profiles === inv.profileNodeIds.length,
+    evidence: progress.evidence === inv.evidenceNodeIds.length,
+    interview: progress.interviews === inv.interviewNodeIds.length,
     ai_inquiry: progress.ai,
-    contradictions: state.viewedNodes.includes("contradictions"),
-    crossroad_1: state.choiceHistory.some((c) => c.startsWith("crossroad-1-")),
-    crossroad_2: state.choiceHistory.some((c) => c.startsWith("crossroad-2-")),
-    crossroad_3: state.choiceHistory.some((c) => c.startsWith("crossroad-3-")),
+    contradictions: state.viewedNodes.includes(flow.contradictionsNodeId),
+    crossroad_1: state.choiceHistory.some((c) =>
+      c.startsWith(flow.crossroadChoicePrefixes[0] ?? "crossroad-1-")
+    ),
+    crossroad_2: state.choiceHistory.some((c) =>
+      c.startsWith(flow.crossroadChoicePrefixes[1] ?? "crossroad-2-")
+    ),
+    crossroad_3: state.choiceHistory.some((c) =>
+      c.startsWith(flow.crossroadChoicePrefixes[2] ?? "crossroad-3-")
+    ),
     verdict: state.phase === "ending",
   };
 }
 
-export function getNextCrossroadNode(state: GameState): string | null {
-  if (!state.viewedNodes.includes("contradictions")) return null;
-  if (!state.choiceHistory.some((c) => c.startsWith("crossroad-1-"))) {
-    return "crossroad_1";
-  }
-  if (!state.choiceHistory.some((c) => c.startsWith("crossroad-2-"))) {
-    return "crossroad_2";
-  }
-  if (!state.choiceHistory.some((c) => c.startsWith("crossroad-3-"))) {
-    return "crossroad_3";
+export function getNextCrossroadNode(
+  state: PlayerState,
+  story: Story
+): string | null {
+  const { flow } = story;
+  if (!state.viewedNodes.includes(flow.contradictionsNodeId)) return null;
+
+  for (let i = 0; i < flow.crossroadNodeIds.length; i++) {
+    const prefix = flow.crossroadChoicePrefixes[i];
+    const nodeId = flow.crossroadNodeIds[i];
+    if (prefix && nodeId && !state.choiceHistory.some((c) => c.startsWith(prefix))) {
+      return nodeId;
+    }
   }
   return null;
 }
 
-export function getExploredCount(state: GameState): number {
-  return (
-    PROFILE_NODE_IDS.filter((id) => state.viewedNodes.includes(id)).length +
-    EVIDENCE_NODE_IDS.filter((id) => state.viewedNodes.includes(id)).length +
-    INTERVIEW_NODE_IDS.filter((id) => state.viewedNodes.includes(id)).length +
-    AI_NODE_IDS.filter((id) => state.viewedNodes.includes(id)).length
-  );
+export function getExploredCount(state: PlayerState, story: Story): number {
+  const inv = story.flow.investigation;
+  const all = [
+    ...inv.profileNodeIds,
+    ...inv.evidenceNodeIds,
+    ...inv.interviewNodeIds,
+    ...inv.aiNodeIds,
+  ];
+  return all.filter((id) => state.viewedNodes.includes(id)).length;
 }

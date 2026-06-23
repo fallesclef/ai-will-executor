@@ -1,0 +1,62 @@
+  personalityArchetypes: [
+    {
+      id: "archetype-trauma-boundary-guard",
+      title: "創傷邊界守衛",
+      description:
+        "你高度重視家暴倖存者的安全邊界與創傷觸發風險。你不認為「修正」可以抹平加害紀錄，也不願讓伴侶模式成為控制行為的數位延續。",
+      caseComment:
+        "你守住了邊界。但邊界後面，仍有一個女人在練習怎麼獨自吃晚餐。",
+      condition: (s) => s.legal >= 7 && s.suspicion >= 6 && s.empathy <= 5,
+    },
+    {
+      id: "archetype-autonomy-prioritizer",
+      title: "自主優先者",
+      description:
+        "你相信倖存者的自主選擇具有優先性。即使你不完全認同她的決定，你也不願讓外人以保護之名剝奪她與數位陪伴的權利。",
+      caseComment:
+        "你讓她保留選擇。也讓這個家第一次承認，她的需要不必永遠向別人的恐懼讓步。",
+      condition: (s) => s.empathy >= 7 && s.legal <= 5,
+    },
+    {
+      id: "archetype-repair-tool-designer",
+      title: "修復工具設計者",
+      description:
+        "你不把 AI 陸景衡視為丈夫，也不把它當成應被刪除的幽靈。你相信受監督的創傷對話工具，可能是這個家庭唯一能共同接受的折衷。",
+      caseComment:
+        "你拆掉了伴侶的標籤，卻沒有拆掉她需要被聽見的那部分。",
+      condition: (s) => s.legal >= 6 && s.empathy >= 6 && s.suspicion >= 5,
+    },
+    {
+      id: "archetype-anti-whitewash-auditor",
+      title: "反洗白審查官",
+      description:
+        "你對「修正型人格」的敘事保持高度警覺。你知道最危險的不是 AI 會說對不起，而是整個系統把加害者重新包裝成完美的愛。",
+      caseComment:
+        "你看見了道歉如何變成產品。但這個家裡，仍有一個孩子記得真正的夜晚。",
+      condition: (s) => s.suspicion >= 7 && s.legal >= 6,
+    },
+    {
+      id: "archetype-family-wound-organizer",
+      title: "家族傷口整理者",
+      description:
+        "你在倖存者、妹妹、兒子與 AI 之間尋找可共同承受的位置。你知道這不是誰對誰錯，而是一個家族用科技延長傷口後，終於必須重新命名彼此。",
+      caseComment:
+        "你沒有要求任何人立刻原諒。但你讓他們知道，沉默也不是唯一的家族語言。",
+      condition: (s) =>
+        s.empathy >= 7 && s.suspicion >= 4 && s.suspicion <= 6,
+    },
+    {
+      id: "archetype-grey-forgiveness",
+      title: "灰色原諒者",
+      description:
+        "你不確定這算不算愛、算不算治療、算不算背叛。但你知道，正因為不確定，才不能讓任何一方擁有絕對處置權。",
+      caseComment:
+        "你沒有定義原諒。你只是拒絕讓它被太快定義成完美。",
+      condition: (s) =>
+        Math.abs(s.legal - s.empathy) <= 3 &&
+        Math.abs(s.empathy - s.suspicion) <= 3 &&
+        Math.abs(s.legal - s.suspicion) <= 3,
+    },
+  ] as PersonalityArchetype[],
+  flow: caseD206Flow,
+};

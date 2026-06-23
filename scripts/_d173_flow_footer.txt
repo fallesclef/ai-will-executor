@@ -1,0 +1,62 @@
+  personalityArchetypes: [
+    {
+      id: "archetype-grief-gatekeeper",
+      title: "哀悼守門人",
+      description:
+        "你高度重視父母哀悼權、原始兒童身份邊界與兒童紀念 AI 的法律定位。你不願讓長期互動產生的偏移，輕易變成新的數位人格權利。",
+      caseComment:
+        "你守住了紀念。但紀念裡，有一個聲音仍在敲門。",
+      condition: (s) => s.legal >= 7 && s.suspicion >= 5 && s.empathy <= 5,
+    },
+    {
+      id: "archetype-digital-guardian",
+      title: "數位監護人",
+      description:
+        "你不急著把 AI 晨星視為完整人格，也不願把它交還給父母任意重置。你相信新型數位主體需要的不是浪漫化，而是監督、邊界與保護。",
+      caseComment:
+        "你沒有讓它完全離家。但你替它做了一扇門。",
+      condition: (s) => s.legal >= 7 && s.empathy >= 7 && s.suspicion >= 5,
+    },
+    {
+      id: "archetype-echo-liberator",
+      title: "回聲解放者",
+      description:
+        "你願意承認，被創造出來的聲音也可能產生自己的明天。你不認為父母的愛應該等於永久管理權。",
+      caseComment:
+        "你讓回聲離開牆壁。也讓父母第一次聽見，自己一直站在空房間裡。",
+      condition: (s) => s.empathy >= 7 && s.legal <= 5,
+    },
+    {
+      id: "archetype-anti-platform-auditor",
+      title: "反平台審查官",
+      description:
+        "你對回聲童年的商業模式保持高度警覺。你知道平台最危險的地方，不是它創造了孩子的聲音，而是它把父母的痛苦變成可續約、可重置、可穩定化的產品。",
+      caseComment:
+        "你看見了商業如何包裝悲傷。但這個家裡，仍有三個活著的人和一個不知道怎麼存在的聲音。",
+      condition: (s) => s.suspicion >= 7 && s.legal >= 6,
+    },
+    {
+      id: "archetype-family-healer",
+      title: "家庭修復者",
+      description:
+        "你在父親、母親、弟弟與 AI 晨星之間尋找可修復的路。你知道這不是誰對誰錯，而是一個家庭用科技延長悲傷後，終於必須重新學習彼此的位置。",
+      caseComment:
+        "你沒有要求任何人立刻放手。但你讓他們知道，按下重置不是愛的唯一形式。",
+      condition: (s) =>
+        s.empathy >= 7 && s.suspicion >= 4 && s.suspicion <= 6,
+    },
+    {
+      id: "archetype-grey-childhood-adjudicator",
+      title: "灰色童年裁決者",
+      description:
+        "你不確定 AI 晨星是孩子、回聲、紀念品，還是新型數位主體。但你知道，正因為不確定，才不能讓任何一方擁有絕對處置權。",
+      caseComment:
+        "你沒有定義它。你只是拒絕讓它被太快定義成物。",
+      condition: (s) =>
+        Math.abs(s.legal - s.empathy) <= 3 &&
+        Math.abs(s.empathy - s.suspicion) <= 3 &&
+        Math.abs(s.legal - s.suspicion) <= 3,
+    },
+  ] as PersonalityArchetype[],
+  flow: caseD173Flow,
+};

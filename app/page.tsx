@@ -1,5 +1,6 @@
-import { GameShell } from "@/components/GameShell";
+import { CaseLobby } from "@/components/CaseLobby";
+import { listCases } from "@/data/cases";
 
-export default function Home() {
-  return <GameShell />;
+export default function HomePage() {
+  return <CaseLobby cases={listCases()} />;
 }

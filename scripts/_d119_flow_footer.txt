@@ -1,0 +1,62 @@
+  personalityArchetypes: [
+    {
+      id: "archetype-market-gatekeeper",
+      title: "市場守門人",
+      description:
+        "你高度重視市場秩序、法律門檻與可證明性。你不願讓情緒、愧疚或未完全驗證的歷史爭議，輕易摧毀一間公司的公開交易程序。",
+      caseComment:
+        "你保護了市場。但市場裡，仍有一個名字沒有被定價。",
+      condition: (s) => s.legal >= 7 && s.suspicion >= 5 && s.empathy <= 5,
+    },
+    {
+      id: "archetype-deceased-revealer",
+      title: "亡者揭露者",
+      description:
+        "你願意相信，死者留下的異常聲明不一定是幻覺。你知道文件完整不代表真相完整，公司合法不代表歷史乾淨。",
+      caseComment:
+        "你沒有讓沈亦舟復活。但你阻止他的名字被拿去陪葬第二次。",
+      condition: (s) => s.empathy >= 7 && s.suspicion >= 5,
+    },
+    {
+      id: "archetype-narrative-auditor",
+      title: "敘事審計師",
+      description:
+        "你在乎法律，也在乎公司如何講述自己。你知道招股書不只是財務文件，它也是企業對市場說出的自我介紹。",
+      caseComment:
+        "你沒有直接摧毀星穹。但你要求它上市前，先把被擦掉的人補回照片裡。",
+      condition: (s) => s.legal >= 7 && s.empathy >= 6 && s.suspicion >= 4,
+    },
+    {
+      id: "archetype-corporate-stabilizer",
+      title: "企業維穩者",
+      description:
+        "你重視企業運作、員工權益與交易確定性。你認為十二年前尚未被司法推翻的死亡事件，不應由一個 AI 在上市前夕重新點燃。",
+      caseComment:
+        "你讓星穹繼續敲鐘。但鐘聲響起時，有一個人仍然被留在招股書之外。",
+      condition: (s) => s.legal >= 7 && s.empathy <= 3,
+    },
+    {
+      id: "archetype-blackbox-dismantler",
+      title: "黑箱拆解者",
+      description:
+        "你不輕易相信公司、AI、家屬或英雄敘事。你知道所有組織在面對高額利益時，都會開始把罪責拆成許多小動作。",
+      caseComment:
+        "你沒有找到一把凶刀。但你看見了一整間公司，如何變成刀柄。",
+      condition: (s) =>
+        s.suspicion >= 7 && s.legal >= 4 && s.empathy >= 3 && s.empathy <= 6,
+    },
+    {
+      id: "archetype-grey-listing-officer",
+      title: "灰色上市官",
+      description:
+        "你在真相、程序、員工、投資人與死者名譽之間尋找可承擔的中間地帶。你不願讓公司毫無代價地上市，也不願只憑 AI 與舊傷直接判它有罪。",
+      caseComment:
+        "你沒有讓市場立刻得到答案。但你讓它至少開始問對問題。",
+      condition: (s) =>
+        Math.abs(s.legal - s.empathy) <= 3 &&
+        Math.abs(s.empathy - s.suspicion) <= 3 &&
+        Math.abs(s.legal - s.suspicion) <= 3,
+    },
+  ] as PersonalityArchetype[],
+  flow: caseD119Flow,
+};

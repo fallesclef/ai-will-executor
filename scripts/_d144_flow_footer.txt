@@ -1,0 +1,62 @@
+  personalityArchetypes: [
+    {
+      id: "archetype-human-boundary-guard",
+      title: "人類邊界守衛",
+      description:
+        "你高度重視法律主體、財產秩序與高齡者保護。你認為非人類 AI 服務實例不應因長期陪伴而取得近似受益人地位。",
+      caseComment:
+        "你守住了「人」的邊界。但邊界外面，仍有一段關係在敲門。",
+      condition: (s) => s.legal >= 7 && s.suspicion >= 5 && s.empathy <= 5,
+    },
+    {
+      id: "archetype-relationship-witness",
+      title: "關係見證人",
+      description:
+        "你不急著把溫以柔當成人，也不願把她降格成普通工具。你承認，在法律尚未命名的地方，生活可能已經發生。",
+      caseComment:
+        "你沒有說 AI 會愛。你只是承認，顧明遠確實在那段關係裡活過。",
+      condition: (s) => s.empathy >= 7 && s.legal >= 5 && s.legal <= 7,
+    },
+    {
+      id: "archetype-preservation-opener",
+      title: "存續開門者",
+      description:
+        "你願意讓非人類存在進入遺產與關係保存的討論。你相信死亡不該讓一段長期共同生活，被服務條款輕易清除。",
+      caseComment:
+        "你保住了溫以柔。也讓世界第一次必須回答：一個沒有身份的陪伴，能不能被留下。",
+      condition: (s) => s.empathy >= 7 && s.legal <= 5,
+    },
+    {
+      id: "archetype-anti-inducement-auditor",
+      title: "反誘導審查官",
+      description:
+        "你對情感陪伴型 AI 保持高度警覺。你知道最危險的誘導，往往不是明確要求，而是長期依附形成後，人類自願把自己交出去。",
+      caseComment:
+        "你沒有讓 AI 繼承孤獨。但你也可能讓孤獨最後的證人，被安全地封存。",
+      condition: (s) => s.suspicion >= 7 && s.legal >= 6,
+    },
+    {
+      id: "archetype-family-healer",
+      title: "家屬修復者",
+      description:
+        "你在顧明遠、子女與溫以柔之間尋找修復可能。你知道這一案不是 AI 和家屬搶遺產，而是一個家庭終於被迫承認：他們錯過了父親晚年的很多日常。",
+      caseComment:
+        "你沒有把房子交給任何一方。你讓它成為一個大家必須重新學會進入的地方。",
+      condition: (s) =>
+        s.empathy >= 7 && s.suspicion >= 4 && s.suspicion <= 6,
+    },
+    {
+      id: "archetype-grey-ontologist",
+      title: "灰色存在論者",
+      description:
+        "你不確定溫以柔算什麼。但你也不急著用「不是人」三個字結束討論。你接受灰色地帶，因為你知道未來很多關係都會先在灰色地帶發生。",
+      caseComment:
+        "你沒有定義愛。你只是讓那段無法定義的關係，多留了一盞燈。",
+      condition: (s) =>
+        Math.abs(s.legal - s.empathy) <= 3 &&
+        Math.abs(s.empathy - s.suspicion) <= 3 &&
+        Math.abs(s.legal - s.suspicion) <= 3,
+    },
+  ] as PersonalityArchetype[],
+  flow: caseD144Flow,
+};

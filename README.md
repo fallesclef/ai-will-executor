@@ -1,14 +1,8 @@
 # ai-will-executor
 
-《AI遺囑執行人》第一案：《母親的刪除請求》V0.1
+《AI遺囑執行人》互動文字遊戲 — 多案件資料架構 + Vercel 分析後台
 
-## 線上試玩
-
-部署後可在此更新公開網址：
-
-- **試玩連結：** （部署完成後填入，例如 `https://ai-will-executor.vercel.app`）
-
-## 本地開發
+## 啟動
 
 ```bash
 cd /Users/linsongmin/ai-will-executor
@@ -16,66 +10,84 @@ npm install
 npm run dev
 ```
 
-開啟 [http://localhost:3000](http://localhost:3000)
+- 案件大廳：http://localhost:3000
+- 第一案：http://localhost:3000/case/case-d047
+- 分析後台：http://localhost:3000/admin
 
-## 推送到 GitHub
+## 專案結構
 
-專案已初始化 git（`main` 分支、2 個 commit）。在本機 **Terminal** 執行：
-
-```bash
-cd /Users/linsongmin/ai-will-executor
-./scripts/setup-github.sh
+```
+data/cases/
+  index.ts          # 案件註冊表（新增第二案在此掛載）
+  case-d047.ts      # 第一案：劇情 nodes + flow 設定
+  _template.ts      # 第二案範本
+lib/
+  engine.ts         # 通用引擎（不硬編碼節點 ID）
+  player/client.ts  # 玩家身分（匿名 / Email）
+  sync/client.ts    # 進度同步至後台
+  store/redis.ts    # Upstash Redis 儲存
+app/api/            # Vercel Serverless API
 ```
 
-或手動推送（需先在 GitHub 建立空 repo）：
+## 新增第二案
 
-1. 建立 repo：[github.com/new?name=ai-will-executor](https://github.com/new?name=ai-will-executor&owner=fallesclef)（**不要**勾選 README）
-2. 推送：
+1. 複製 `data/cases/_template.ts` → `data/cases/case-d048.ts`
+2. 填入 `nodes`、`endings`、`personalityArchetypes`、`flow`
+3. 在 `data/cases/index.ts` 的 `CASE_REGISTRY` 與 `CASE_LIST` 註冊
+4. 玩家從大廳 `/` 進入 `/case/case-d048`
 
-```bash
-cd /Users/linsongmin/ai-will-executor
-git push -u origin main
+**不需改** `GameShell`、`engine`、UI 元件（除非新案件有特殊機制）。
+
+## PlayerState（玩家進度）
+
+```ts
+{
+  storyId, playerId,
+  legal / empathy / suspicion,  // stats
+  viewedNodes, flags, choiceHistory,
+  currentNodeId, phase, endingId, ...
+}
 ```
 
-Repo 位址：`https://github.com/fallesclef/ai-will-executor`
+每個案件獨立 localStorage：`ai-will-executor-v04:{storyId}`
 
-## 部署到 Vercel（推薦）
+## 後台與會員（Vercel 部署不變）
 
-1. 將此 repo 推送到 GitHub
-2. 前往 [vercel.com](https://vercel.com)，用 GitHub 登入
-3. **Add New Project** → 選擇 `ai-will-executor`
-4. 保持預設設定（Framework: Next.js），點 **Deploy**
-5. 完成後取得公開網址，分享給試玩者
+遊戲仍部署在 Vercel；後台透過 **同 repo 的 API Routes** + **Upstash Redis**。
 
-此專案無後端、存檔在瀏覽器 localStorage，可直接靜態部署。
+### 環境變數（Vercel → Settings → Environment Variables）
 
-## 遊戲主流程
+複製 `.env.example`：
 
-1. 開場 → 案件登入 → 審查規則
-2. 案件控制台（D-047）
-3. 案件簡報 → 角色資料（5）→ 七份證據 → 三位家屬訪談 → AI 六問
-4. 矛盾整理 → 三個關鍵抉擇 → 提交裁決
-5. 四個主結局 / 隱藏結局「最後授權」→ 裁決人格報告
+| 變數 | 用途 |
+|------|------|
+| `KV_REST_API_URL` | Upstash Redis REST URL |
+| `KV_REST_API_TOKEN` | Upstash Redis Token |
+| `ADMIN_SECRET` | `/admin` 後台密鑰 |
 
-## 裁決選項
+在 Vercel：**Storage → Create → Upstash Redis** 可一鍵注入 `KV_*`。
 
-- A. 核准刪除
-- B. 駁回刪除
-- C. 暫緩三十天
-- D. 封存不刪除
+未設定 Redis 時：遊戲正常，同步 API 靜默略過。
 
-## 隱藏結局觸發
+### 玩家身分
 
-- 閱覽證據 01、02、06
-- 完成 AI 問答「你是陳雅惠本人嗎？」
-- 關鍵抉擇三：承認或條件式承認 AI 自主請求權
-- 最終選擇「核准刪除」或「封存不刪除」
+- **匿名**：自動產生 `playerId`，可統計試玩
+- **Email（選填）**：大廳註冊後跨裝置對應同一 `playerId`
 
-## 劇情資料
+### 分析後台 `/admin`
 
-- `data/story.ts` — 單一劇情資料來源（主入口、所有節點、結局、人格報告與流程常數）
+輸入 `ADMIN_SECRET` 後可查看：
+
+- 玩家數、各案完成數
+- 結局分布
+- 熱門選項 ID 統計
+
+## 部署
+
+仍使用 Vercel + GitHub，無需另架伺服器。推送後在 Vercel 補上環境變數即可。
 
 ## 技術
 
 - Next.js 15 + TypeScript
-- 無後端，進度儲存於 localStorage（`v03`）
+- 劇情：純資料（`Story` + `CaseFlow`）
+- 存檔：localStorage + 可選 Redis 同步

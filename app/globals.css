@@ -336,6 +336,56 @@ body {
 .stat-row__fill--legal { background: var(--accent-blue); }
 .stat-row__fill--empathy { background: var(--accent-green); }
 .stat-row__fill--suspicion { background: var(--accent-amber); }
+.stat-row__fill--public_trust { background: #6b9bd1; }
+.stat-row__fill--social_stability { background: #9b7bb8; }
+.stat-row__fill--truth_pressure { background: #c97b5c; }
+
+.status-panel__countdown {
+  margin-bottom: 1rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--accent-amber);
+  background: rgba(201, 123, 92, 0.08);
+}
+
+.status-panel__countdown-value {
+  font-family: var(--font-mono);
+  font-size: 1.1rem;
+  color: var(--accent-amber);
+  margin: 0.25rem 0 0;
+}
+
+.stat-row__fill--mirror_integrity { background: #7ec8a3; }
+
+.status-panel__stats-title--public {
+  margin-top: 0.75rem;
+  color: var(--accent-amber);
+}
+
+.status-panel__stats-title--mirror {
+  margin-top: 0.75rem;
+  color: #7ec8a3;
+}
+
+.node-view__prediction,
+.node-view__verdict-hint {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--accent-amber);
+  margin: 0.75rem 0 0;
+  padding: 0.5rem 0.75rem;
+  border: 1px dashed var(--accent-amber);
+  background: rgba(201, 123, 92, 0.06);
+}
+
+.choice-btn--glow {
+  animation: choice-glow 1.8s ease-in-out infinite;
+  border-color: var(--accent-amber);
+}
+
+@keyframes choice-glow {
+  0%, 100% { box-shadow: 0 0 0 rgba(201, 123, 92, 0); }
+  50% { box-shadow: 0 0 12px rgba(201, 123, 92, 0.45); }
+}
 
 .stat-row__hint {
   font-family: var(--font-mono);
@@ -643,15 +693,32 @@ body {
   color: var(--text-secondary);
 }
 
-.nav-btn__badge {
+.nav-btn__badges {
   position: absolute;
-  top: 0.35rem;
-  right: 0.35rem;
+  top: 0.3rem;
+  right: 0.3rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.2rem;
+}
+
+.nav-btn__badge {
   font-family: var(--font-mono);
-  font-size: 0.55rem;
+  font-size: 0.5rem;
+  padding: 0.05rem 0.25rem;
+  white-space: nowrap;
+  line-height: 1.3;
+}
+
+.nav-btn__badge--viewed {
   color: var(--accent-green);
   border: 1px solid var(--accent-green);
-  padding: 0.05rem 0.25rem;
+}
+
+.nav-btn__badge--pending {
+  color: #e57373;
+  border: 1px solid #e57373;
 }
 
 /* ── Verdict Gate ── */
@@ -830,3 +897,222 @@ body {
   flex-wrap: wrap;
   gap: 0.5rem;
 }
+
+.header-btn--link {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* ── Case Lobby ── */
+
+.lobby {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 2rem 1.5rem;
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+.lobby__header {
+  margin-bottom: 2rem;
+}
+
+.lobby__sys {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--accent-cyan);
+  letter-spacing: 0.15em;
+}
+
+.lobby__title {
+  font-size: 1.75rem;
+  margin: 0.5rem 0 0.25rem;
+}
+
+.lobby__subtitle {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.lobby__section-title {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--accent-cyan);
+  letter-spacing: 0.08em;
+  margin-bottom: 0.75rem;
+}
+
+.lobby__account {
+  margin-bottom: 2.5rem;
+  padding: 1.25rem;
+  border: 1px solid var(--border);
+  background: var(--bg-secondary);
+}
+
+.lobby__hint {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-bottom: 1rem;
+  line-height: 1.6;
+}
+
+.lobby__account-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.lobby__input {
+  flex: 1;
+  min-width: 200px;
+  padding: 0.6rem 0.75rem;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+}
+
+.lobby__status {
+  margin-top: 0.75rem;
+  font-size: 0.8rem;
+  color: var(--accent-green);
+}
+
+.lobby__grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+
+.lobby__card {
+  border: 1px solid var(--border);
+  padding: 1.25rem;
+  background: var(--bg-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.lobby__card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.lobby__case-id {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--accent-cyan);
+}
+
+.lobby__badge {
+  font-size: 0.65rem;
+  color: var(--text-dim);
+  border: 1px solid var(--border-dim);
+  padding: 0.15rem 0.4rem;
+}
+
+.lobby__card-title {
+  font-size: 1rem;
+  margin: 0;
+}
+
+.lobby__card-desc {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  flex: 1;
+}
+
+.lobby__play-btn {
+  display: inline-block;
+  margin-top: 0.75rem;
+  padding: 0.5rem 1rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--accent-cyan);
+  border: 1px solid var(--accent-cyan);
+  text-decoration: none;
+  text-align: center;
+}
+
+.lobby__play-btn--disabled {
+  opacity: 0.4;
+  border-color: var(--border);
+  color: var(--text-dim);
+}
+
+.lobby__footer {
+  margin-top: auto;
+  padding-top: 2rem;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  color: var(--text-dim);
+}
+
+/* ── Admin ── */
+
+.admin {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+}
+
+.admin__header h1 {
+  font-size: 1.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.admin__header p {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  margin-bottom: 1.5rem;
+}
+
+.admin__login {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+
+.admin__error {
+  color: #e57373;
+  margin-bottom: 1rem;
+}
+
+.admin__grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+}
+
+.admin__card {
+  border: 1px solid var(--border);
+  background: var(--bg-secondary);
+  padding: 1rem;
+}
+
+.admin__card--wide {
+  grid-column: 1 / -1;
+}
+
+.admin__card h2 {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--accent-cyan);
+  margin-bottom: 0.75rem;
+}
+
+.admin__card ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.8;
+}
+

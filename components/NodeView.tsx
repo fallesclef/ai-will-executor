@@ -1,6 +1,5 @@
 "use client";
 
-import { CATEGORY_LABELS } from "@/data/story";
 import { ChoiceButton } from "@/components/ChoiceButton";
 import type { Choice } from "@/types/story";
 
@@ -8,6 +7,7 @@ interface NodeViewProps {
   title: string;
   subtitle?: string;
   category: string;
+  categoryLabels: Record<string, string>;
   content: string[];
   choices?: Choice[];
   onChoice: (choice: Choice) => void;
@@ -15,12 +15,16 @@ interface NodeViewProps {
   showBack?: boolean;
   isVerdict?: boolean;
   isCrossroad?: boolean;
+  predictionLabel?: string;
+  interfaceGlowChoiceId?: string;
+  verdictHint?: string;
 }
 
 export function NodeView({
   title,
   subtitle,
   category,
+  categoryLabels,
   content,
   choices,
   onChoice,
@@ -28,8 +32,11 @@ export function NodeView({
   showBack = false,
   isVerdict = false,
   isCrossroad = false,
+  predictionLabel,
+  interfaceGlowChoiceId,
+  verdictHint,
 }: NodeViewProps) {
-  const categoryLabel = CATEGORY_LABELS[category] ?? category;
+  const categoryLabel = categoryLabels[category] ?? category;
 
   return (
     <article className="node-view">
@@ -57,6 +64,13 @@ export function NodeView({
         ))}
       </div>
 
+      {predictionLabel && (
+        <p className="node-view__prediction">{predictionLabel}</p>
+      )}
+      {verdictHint && (
+        <p className="node-view__verdict-hint">{verdictHint}</p>
+      )}
+
       {choices && choices.length > 0 && (
         <footer className="node-view__footer">
           <p className="node-view__choice-prompt">
@@ -72,6 +86,7 @@ export function NodeView({
                 key={choice.id}
                 label={choice.label}
                 variant={isVerdict ? "primary" : "default"}
+                highlighted={choice.id === interfaceGlowChoiceId}
                 onClick={() => onChoice(choice)}
               />
             ))}
