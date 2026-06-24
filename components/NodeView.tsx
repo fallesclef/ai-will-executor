@@ -17,6 +17,7 @@ interface NodeViewProps {
   isCrossroad?: boolean;
   predictionLabel?: string;
   interfaceGlowChoiceId?: string;
+  fauxGlowLabel?: string;
   verdictHint?: string;
 }
 
@@ -34,6 +35,7 @@ export function NodeView({
   isCrossroad = false,
   predictionLabel,
   interfaceGlowChoiceId,
+  fauxGlowLabel,
   verdictHint,
 }: NodeViewProps) {
   const categoryLabel = categoryLabels[category] ?? category;
@@ -64,6 +66,16 @@ export function NodeView({
         ))}
       </div>
 
+      {fauxGlowLabel && (
+        <p className="node-view__faux-glow">
+          <span className="node-view__faux-glow-label choice-btn--glow">
+            {fauxGlowLabel}
+          </span>
+          <span className="node-view__faux-glow-note">
+            （在你碰到滑鼠前，這個選項自己亮了起來。）
+          </span>
+        </p>
+      )}
       {predictionLabel && (
         <p className="node-view__prediction">{predictionLabel}</p>
       )}

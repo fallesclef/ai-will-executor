@@ -18,13 +18,24 @@ import {
   isHubNode,
 } from "@/lib/engine";
 import { resolveNodeContent } from "@/lib/nodes";
-import { predictCrossroadChoice } from "@/lib/season-history";
+import { predictCrossroadChoice, predictD399Verdict, predictEvidenceChoice, computeMirrorSyncPercent } from "@/lib/season-history";
 import { StatusPanel } from "@/components/StatusPanel";
 import { NodeView } from "@/components/NodeView";
 import { CaseDashboard } from "@/components/CaseDashboard";
 import { getLocalPlayerId, registerPlayer } from "@/lib/player/client";
 import { queueSync } from "@/lib/sync/client";
-import { getStory } from "@/data/cases";
+import { getStory, listCases } from "@/data/cases";
+import { hasCompletedRequiredCases, shouldShowResonancePanel } from "@/lib/resonance";
+import { ResonancePanel } from "@/components/ResonancePanel";
+import {
+  getExecutorName,
+  getAiExecutorName,
+  hasExecutorName,
+  personalizeChoice,
+  personalizeLines,
+  personalizeNarrative,
+} from "@/lib/executor-identity";
+import { ExecutorNameForm } from "@/components/ExecutorNameForm";
 
 interface GameShellProps {
   caseId: string;
@@ -48,12 +59,35 @@ export function GameShell({ caseId }: GameShellProps) {
 }
 
 function GameShellContent({ story }: { story: Story }) {
+  const caseMeta = listCases().find((c) => c.id === story.id);
+  const prerequisitesMet =
+    !caseMeta?.requiresCompletedCases?.length ||
+    hasCompletedRequiredCases(caseMeta.requiresCompletedCases);
+
+  if (!prerequisitesMet) {
+    return (
+      <div className="game-loading">
+        <p className="game-loading__text">【權限不足】需先完成前七案裁決。</p>
+        <Link href="/" className="choice-btn" style={{ marginTop: "1rem" }}>
+          返回案件大廳
+        </Link>
+      </div>
+    );
+  }
+
+  return <GameShellInner story={story} />;
+}
+
+function GameShellInner({ story }: { story: Story }) {
   const [state, setState] = useState<PlayerState>(() =>
     createInitialState(story, getLocalPlayerId())
   );
   const [hydrated, setHydrated] = useState(false);
+  const [nameReady, setNameReady] = useState(false);
   const [verdictDwellReady, setVerdictDwellReady] = useState(false);
+  const [verdictDwellRemainingMs, setVerdictDwellRemainingMs] = useState(0);
   const { flow } = story;
+  const executorName = getExecutorName();
 
   useEffect(() => {
     void registerPlayer();
@@ -62,6 +96,7 @@ function GameShellContent({ story }: { story: Story }) {
       setState({ ...saved, playerId: saved.playerId || getLocalPlayerId() });
     }
     setHydrated(true);
+    setNameReady(hasExecutorName());
   }, [story.id]);
 
   useEffect(() => {
@@ -146,15 +181,30 @@ function GameShellContent({ story }: { story: Story }) {
   useEffect(() => {
     if (state.currentNodeId !== flow.verdictNodeId) {
       setVerdictDwellReady(false);
+      setVerdictDwellRemainingMs(0);
       return;
     }
     if (!secretVerdict || !secretUnlocked) {
       setVerdictDwellReady(false);
+      setVerdictDwellRemainingMs(0);
       return;
     }
     const dwell = secretVerdict.dwellMs ?? 8000;
+    const startedAt = Date.now();
+    setVerdictDwellRemainingMs(dwell);
+    const tick = window.setInterval(() => {
+      const remaining = Math.max(0, dwell - (Date.now() - startedAt));
+      setVerdictDwellRemainingMs(remaining);
+      if (remaining <= 0) {
+        setVerdictDwellReady(true);
+        window.clearInterval(tick);
+      }
+    }, 200);
     const timer = window.setTimeout(() => setVerdictDwellReady(true), dwell);
-    return () => window.clearTimeout(timer);
+    return () => {
+      window.clearTimeout(timer);
+      window.clearInterval(tick);
+    };
   }, [
     state.currentNodeId,
     flow.verdictNodeId,
@@ -188,11 +238,29 @@ function GameShellContent({ story }: { story: Story }) {
       ? predictCrossroadChoice(state.currentNodeId, state)
       : null;
 
-  const interfaceGlowChoiceId =
+  const verdictPrediction =
     flow.predictionEnabled &&
-    flow.crossroadNodeIds.includes(state.currentNodeId) &&
-    crossroadPrediction
-      ? crossroadPrediction.choiceId
+    state.currentNodeId === flow.verdictNodeId
+      ? predictD399Verdict(state)
+      : null;
+
+  const evidencePrediction =
+    flow.predictionEnabled &&
+    currentNode?.category === "player_record"
+      ? predictEvidenceChoice(state.currentNodeId, state)
+      : null;
+
+  const activePrediction =
+    crossroadPrediction ?? verdictPrediction ?? evidencePrediction;
+
+  const interfaceGlowChoiceId =
+    flow.predictionEnabled && activePrediction
+      ? activePrediction.choiceId
+      : undefined;
+
+  const fauxGlowLabel =
+    flow.interfaceInterference?.nodeId === state.currentNodeId
+      ? flow.interfaceInterference.glowLabel
       : undefined;
   const ending = state.endingId
     ? story.endings.find((e) => e.id === state.endingId)
@@ -202,8 +270,24 @@ function GameShellContent({ story }: { story: Story }) {
     canUnlockHiddenEnding(state, story, state.verdictChoiceId);
   const personality =
     state.phase === "ending"
-      ? resolvePersonality(state.stats, story.personalityArchetypes)
+      ? resolvePersonality(state, story.personalityArchetypes)
       : null;
+
+  const personalizedChoices = useMemo(() => {
+    const base = displayChoices ?? currentNode?.choices;
+    if (!base || !executorName) return base;
+    return base.map((c) => personalizeChoice(c, executorName));
+  }, [displayChoices, currentNode?.choices, executorName]);
+
+  const predictionLabel = useMemo(() => {
+    if (!activePrediction) return undefined;
+    const label = personalizeNarrative(activePrediction.label, executorName);
+    return `${getAiExecutorName(executorName)} 預測：${label}${
+      verdictPrediction
+        ? `（信心 ${verdictPrediction.confidence}%）`
+        : ""
+    }`;
+  }, [activePrediction, executorName, verdictPrediction]);
 
   if (!hydrated) {
     return (
@@ -213,7 +297,36 @@ function GameShellContent({ story }: { story: Story }) {
     );
   }
 
+  if (!nameReady) {
+    return (
+      <div className="game-shell game-shell--onboarding">
+        <ExecutorNameForm
+          variant="gate"
+          onSaved={() => setNameReady(true)}
+        />
+      </div>
+    );
+  }
+
+  const showResonanceMain =
+    flow.resonanceEnabled &&
+    shouldShowResonancePanel(story, state) &&
+    currentNode &&
+    (currentNode.id === "evidence_11" ||
+      currentNode.id === "echoes" ||
+      currentNode.id === "evidence_08" ||
+      currentNode.category === "echoes" ||
+      (state.phase === "ending" &&
+        ["case-d173", "case-d206", "case-d301", "case-d399"].includes(
+          story.id
+        )));
+
   if (state.phase === "ending" && ending) {
+    const nextUnlock = flow.nextCaseUnlock;
+    const canEnterNext =
+      nextUnlock &&
+      state.verdictChoiceId &&
+      hasCompletedRequiredCases(nextUnlock.requiresCases ?? [story.id]);
     return (
       <div className="game-shell">
         <header className="game-header">
@@ -231,13 +344,17 @@ function GameShellContent({ story }: { story: Story }) {
               </div>
             )}
             <header className="ending-view__header">
-              <span className="ending-view__subtitle">{ending.subtitle}</span>
-              <h2 className="ending-view__title">{ending.title}</h2>
+              <span className="ending-view__subtitle">
+                {personalizeNarrative(ending.subtitle, executorName)}
+              </span>
+              <h2 className="ending-view__title">
+                {personalizeNarrative(ending.title, executorName)}
+              </h2>
               <div className="ending-view__divider" />
             </header>
 
             <div className="ending-view__body">
-              {ending.content.map((p, i) => (
+              {personalizeLines(ending.content, executorName).map((p, i) => (
                 <p
                   key={i}
                   className={
@@ -260,7 +377,8 @@ function GameShellContent({ story }: { story: Story }) {
                       extra = ending.epilogueSeal;
                     }
                   }
-                  return extra?.map((p, i) => (
+                  if (!extra) return null;
+                  return personalizeLines(extra, executorName).map((p, i) => (
                     <p
                       key={`ep-h-${i}`}
                       className={
@@ -284,10 +402,11 @@ function GameShellContent({ story }: { story: Story }) {
                     {personality.title}
                   </span>
                   <p className="personality-report__desc">
-                    {personality.description}
+                    {personalizeNarrative(personality.description, executorName)}
                   </p>
                   <p className="personality-report__case">
-                    本案評語：{personality.caseComment}
+                    本案評語：
+                    {personalizeNarrative(personality.caseComment, executorName)}
                   </p>
                   <div className="personality-report__stats">
                     <span>法理 {state.stats.legal}</span>
@@ -308,7 +427,26 @@ function GameShellContent({ story }: { story: Story }) {
               </section>
             )}
 
+            {flow.resonanceEnabled && shouldShowResonancePanel(story, state) && (
+              <ResonancePanel state={state} story={story} />
+            )}
+
             <footer className="ending-view__footer">
+              {canEnterNext && (
+                <Link
+                  href={`/case/${nextUnlock.caseId}`}
+                  className="choice-btn choice-btn--primary"
+                >
+                  <span className="choice-btn__marker">{">"}</span>
+                  {nextUnlock.label}
+                </Link>
+              )}
+              {story.id === "case-d399" && (
+                <Link href="/" className="choice-btn">
+                  <span className="choice-btn__marker">{">"}</span>
+                  返回案件大廳（第一季完）
+                </Link>
+              )}
               <button type="button" className="choice-btn" onClick={handleReset}>
                 <span className="choice-btn__marker">{">"}</span>
                 重新審理本案
@@ -340,12 +478,15 @@ function GameShellContent({ story }: { story: Story }) {
         <main className="game-main game-main--onboarding">
           {currentNode && (
             <NodeView
-              title={currentNode.title}
-              subtitle={currentNode.subtitle}
+              title={personalizeNarrative(currentNode.title, executorName)}
+              subtitle={personalizeNarrative(
+                currentNode.subtitle ?? "",
+                executorName
+              )}
               category={currentNode.category}
               categoryLabels={flow.categoryLabels}
               content={nodeContent}
-              choices={displayChoices ?? currentNode.choices}
+              choices={personalizedChoices ?? currentNode.choices}
               onChoice={handleChoice}
               isVerdict={false}
             />
@@ -363,8 +504,12 @@ function GameShellContent({ story }: { story: Story }) {
     secretVerdict &&
     secretUnlocked &&
     !verdictDwellReady
-      ? "【系統】偵測到未解鎖裁決選項……請在當前畫面停留，勿急於提交。"
-      : undefined;
+      ? `【系統】偵測到未解鎖裁決選項……請在當前畫面停留（約 ${Math.ceil(verdictDwellRemainingMs / 1000)} 秒），勿急於提交。`
+      : state.currentNodeId === flow.verdictNodeId &&
+          secretVerdict &&
+          !secretUnlocked
+        ? "【系統】隱藏裁決尚未解鎖。請完成必要證據、訪談與關鍵抉擇後再返回。"
+        : undefined;
 
   return (
     <div className="game-shell">
@@ -405,25 +550,28 @@ function GameShellContent({ story }: { story: Story }) {
           ) : currentNode ? (
             <div className="main-content">
               <NodeView
-                title={currentNode.title}
-                subtitle={currentNode.subtitle}
+                title={personalizeNarrative(currentNode.title, executorName)}
+                subtitle={personalizeNarrative(
+                  currentNode.subtitle ?? "",
+                  executorName
+                )}
                 category={currentNode.category}
                 categoryLabels={flow.categoryLabels}
                 content={nodeContent}
-                choices={displayChoices}
+                choices={personalizedChoices}
                 onChoice={handleChoice}
                 onBack={() => handleNavigate(flow.hubNodeId)}
                 showBack={showBack}
                 isVerdict={isVerdict}
                 isCrossroad={isCrossroad}
-                predictionLabel={
-                  crossroadPrediction
-                    ? `AI Vincent 預測：${crossroadPrediction.label}`
-                    : undefined
-                }
+                predictionLabel={predictionLabel}
                 interfaceGlowChoiceId={interfaceGlowChoiceId}
+                fauxGlowLabel={fauxGlowLabel}
                 verdictHint={verdictHint}
               />
+              {showResonanceMain && (
+                <ResonancePanel state={state} story={story} />
+              )}
             </div>
           ) : (
             <div className="main-content">

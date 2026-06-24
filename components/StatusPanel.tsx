@@ -3,6 +3,9 @@
 import type { PlayerState, Story } from "@/types/story";
 import { STAT_LABELS } from "@/types/story";
 import { getFlowStepStatus } from "@/lib/engine";
+import { computeMirrorSyncPercent } from "@/lib/season-history";
+import { computeElectionHoursRemaining, shouldShowResonanceDormant, shouldShowResonancePanel } from "@/lib/resonance";
+import { ResonancePanel, ResonancePanelDormant } from "@/components/ResonancePanel";
 
 interface StatusPanelProps {
   state: PlayerState;
@@ -14,6 +17,12 @@ export function StatusPanel({ state, story }: StatusPanelProps) {
   const stepStatus = getFlowStepStatus(state, story);
   const completedSteps = flow.flowSteps.filter((s) => stepStatus[s.id]).length;
   const verdictReady = stepStatus.verdict || state.phase === "verdict";
+  const mirrorSync = flow.mirrorStatsEnabled
+    ? computeMirrorSyncPercent(state.stats.mirror_integrity)
+    : null;
+  const electionHours = flow.electionCountdown
+    ? computeElectionHoursRemaining(state, story)
+    : null;
 
   return (
     <aside className="status-panel">
@@ -66,15 +75,33 @@ export function StatusPanel({ state, story }: StatusPanelProps) {
         </ul>
       </div>
 
-      {flow.electionCountdown && (
+      {mirrorSync !== null && (
+        <div className="status-panel__countdown">
+          <h3 className="status-panel__flow-title">鏡像同步狀態</h3>
+          <p className="status-panel__countdown-value">同步率 {mirrorSync}%</p>
+        </div>
+      )}
+
+      {flow.electionCountdown && electionHours !== null && (
         <div className="status-panel__countdown">
           <h3 className="status-panel__flow-title">
             {flow.electionCountdown.label}
           </h3>
           <p className="status-panel__countdown-value">
-            剩餘 {flow.electionCountdown.hoursRemaining} 小時
+            剩餘 {electionHours} 小時
+          </p>
+          <p className="status-panel__countdown-hint">
+            審查推進中，時間持續流逝
           </p>
         </div>
+      )}
+
+      {flow.resonanceEnabled && shouldShowResonancePanel(story, state) && (
+        <ResonancePanel state={state} story={story} compact />
+      )}
+
+      {flow.resonanceEnabled && shouldShowResonanceDormant(story, state) && (
+        <ResonancePanelDormant />
       )}
 
       <div className="status-panel__stats">

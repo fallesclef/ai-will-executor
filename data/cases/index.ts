@@ -85,6 +85,15 @@ export const CASE_LIST: CaseMeta[] = [
     caseNumber: caseD399.caseNumber,
     description: caseD399.description,
     status: "available",
+    requiresCompletedCases: [
+      "case-d047",
+      "case-d082",
+      "case-d119",
+      "case-d144",
+      "case-d173",
+      "case-d206",
+      "case-d301",
+    ],
   },
 ];
 

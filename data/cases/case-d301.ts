@@ -25,6 +25,13 @@ export const caseD301Flow: CaseFlow = {
     hoursRemaining: 71,
   },
   publicStatsEnabled: true,
+  resonanceEnabled: true,
+  resonancePulseNodeIds: ["evidence_11"],
+  nextCaseUnlock: {
+    caseId: "case-d399",
+    label: "進入第八案：你自己的備份",
+    requiresCases: ["case-d301"],
+  },
   investigation: {
     briefNodeId: "brief",
     profileNodeIds: [
@@ -1591,6 +1598,7 @@ back()],
         "",
         "AI 顧廷岳聲明同時包含真實生前授權與跨案件異常影響。",
       ],
+      viewFlags: ["viewed_cross_case_resonance_report"],
       choices: [        {
           id: "ev11-resonance",
           label: "前六案異常語句與本案高度共振",

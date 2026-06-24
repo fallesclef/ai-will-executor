@@ -25,6 +25,13 @@ export const caseD301Flow: CaseFlow = {
     hoursRemaining: 71,
   },
   publicStatsEnabled: true,
+  resonanceEnabled: true,
+  resonancePulseNodeIds: ["evidence_11"],
+  nextCaseUnlock: {
+    caseId: "case-d399",
+    label: "進入第八案：你自己的備份",
+    requiresCases: ["case-d301"],
+  },
   investigation: {
     briefNodeId: "brief",
     profileNodeIds: [

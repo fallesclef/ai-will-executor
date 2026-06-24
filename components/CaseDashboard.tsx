@@ -8,6 +8,7 @@ import {
   hasCompletedCrossroads,
   isNodeChoicePending,
 } from "@/lib/engine";
+import { personalizeNarrative } from "@/lib/executor-identity";
 
 interface CaseDashboardProps {
   story: Story;
@@ -34,7 +35,7 @@ export function CaseDashboard({
       <div className="dashboard__intro">
         {(flow.dashboardIntro ?? []).map((line, i) => (
           <p key={i} className={i > 0 ? "dashboard__hint" : undefined}>
-            {line}
+            {personalizeNarrative(line)}
           </p>
         ))}
       </div>
@@ -70,8 +71,8 @@ export function CaseDashboard({
                 return (
                   <NavButton
                     key={nodeId}
-                    label={info.label}
-                    subtitle={info.sub}
+                    label={personalizeNarrative(info.label)}
+                    subtitle={personalizeNarrative(info.sub)}
                     viewed={viewed}
                     pendingChoice={pendingChoice}
                     disabled={locked}

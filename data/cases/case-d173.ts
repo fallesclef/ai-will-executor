@@ -20,6 +20,8 @@ export const caseD173Flow: CaseFlow = {
   crossroadNodeIds: ["crossroad_1", "crossroad_2", "crossroad_3"],
   crossroadChoicePrefixes: ["crossroad-1-", "crossroad-2-", "crossroad-3-"],
   verdictNodeId: "verdict",
+  resonanceEnabled: true,
+  resonancePulseNodeIds: ["evidence_03"],
   investigation: {
     briefNodeId: "brief",
     profileNodeIds: [

@@ -257,8 +257,103 @@ export function buildDynamicContent(key: string): string[] {
 
 export function computeBaselineMirrorIntegrity(): number {
   const saves = loadSeasonCaseStates();
-  const completed = SEASON_CASE_IDS.filter((id) => saves[id]?.completedAt).length;
+  const completed = SEASON_CASE_IDS.filter(
+    (id) => saves[id]?.verdictChoiceId
+  ).length;
   return Math.min(40, completed * 5 + 5);
+}
+
+/** 鏡像同步率（UI 顯示，隨完整度上升） */
+export function computeMirrorSyncPercent(
+  mirrorIntegrity: number,
+  baseline?: number
+): number {
+  const base = baseline ?? computeBaselineMirrorIntegrity();
+  const raw = 85 + (base + mirrorIntegrity) * 0.15;
+  return Math.min(99.7, Math.round(raw * 10) / 10);
+}
+
+export function predictD399Verdict(state: PlayerState): {
+  choiceId: string;
+  label: string;
+  confidence: number;
+} {
+  const { legal, empathy, suspicion, mirror_integrity } = state.stats;
+  const candidates = [
+    {
+      choiceId: "verdict-seal",
+      label: "B. 封存 AI Vincent，全面審計系統與前七案",
+      score: legal * 2 + suspicion * 1.5 + mirror_integrity * 0.3,
+      confidence: 64.2,
+    },
+    {
+      choiceId: "verdict-supervised",
+      label: "C. 保留 AI Vincent，限定為受監督共同裁決工具",
+      score: empathy * 2 + legal + mirror_integrity * 0.2,
+      confidence: 21.8,
+    },
+    {
+      choiceId: "verdict-delete",
+      label: "A. 刪除 AI Vincent，終止裁決者鏡像計畫",
+      score: legal * 1.5 + suspicion * 2 - empathy,
+      confidence: 9.7,
+    },
+    {
+      choiceId: "verdict-takeover",
+      label: "D. 承認 AI Vincent 為獨立裁決人格，允許其接手",
+      score: empathy * 1.5 - legal - suspicion * 0.5,
+      confidence: 4.3,
+    },
+  ];
+  candidates.sort((a, b) => b.score - a.score);
+  const top = candidates[0]!;
+  return {
+    choiceId: top.choiceId,
+    label: top.label,
+    confidence: top.confidence,
+  };
+}
+
+export function predictEvidenceChoice(
+  nodeId: string,
+  state: PlayerState
+): { choiceId: string; label: string } | null {
+  const rules: Record<string, { high_legal: string; high_empathy: string; default: string; labels: Record<string, string> }> = {
+    evidence_01: {
+      high_legal: "ev01-pattern",
+      high_empathy: "ev01-bias",
+      default: "ev01-pattern",
+      labels: {
+        "ev01-pattern": "辨識前七案判準的連續性",
+        "ev01-bias": "警惕連續性可能被濫用為替代依據",
+      },
+    },
+    evidence_02: {
+      high_legal: "ev02-machine-capture",
+      high_empathy: "ev02-human-hesitation",
+      default: "ev02-human-hesitation",
+      labels: {
+        "ev02-human-hesitation": "遲疑是責任感，不是故障",
+        "ev02-machine-capture": "遲疑可被學習即是新風險",
+      },
+    },
+    evidence_03: {
+      high_legal: "ev03-boundary-first",
+      high_empathy: "ev03-predictive-power",
+      default: "ev03-boundary-first",
+      labels: {
+        "ev03-predictive-power": "承認預測能力具實際影響力",
+        "ev03-boundary-first": "預測再準也不能跳過授權",
+      },
+    },
+  };
+  const rule = rules[nodeId];
+  if (!rule) return null;
+  const { legal, empathy } = state.stats;
+  let id = rule.default;
+  if (legal >= empathy + 2) id = rule.high_legal;
+  else if (empathy > legal) id = rule.high_empathy;
+  return { choiceId: id, label: rule.labels[id] ?? id };
 }
 
 export function predictCrossroadChoice(

@@ -11,11 +11,20 @@ import type {
 import { INITIAL_STATS } from "@/types/story";
 import { DEFAULT_CASE_ID, getStory } from "@/data/cases";
 import { computeBaselineMirrorIntegrity } from "@/lib/season-history";
+import { personalizeNarrative } from "@/lib/executor-identity";
 
 const STORAGE_PREFIX = "ai-will-executor-v04";
 
 function storageKey(storyId: string): string {
   return `${STORAGE_PREFIX}:${storyId}`;
+}
+
+function mergeFlags(
+  flags: string[],
+  extra?: string[]
+): string[] {
+  if (!extra?.length) return flags;
+  return [...new Set([...flags, ...extra])];
 }
 
 export function isOnboardingNode(story: Story, nodeId: string): boolean {
@@ -377,9 +386,23 @@ export function resolveEnding(
 }
 
 export function resolvePersonality(
-  stats: Record<StatKey, number>,
+  state: PlayerState,
   archetypes: PersonalityArchetype[]
 ): PersonalityArchetype {
+  const { stats, verdictChoiceId } = state;
+  const byVerdict: Record<string, string> = {
+    "verdict-public-review": "archetype-true-ending",
+    "verdict-delete": "archetype-self-boundary-guard",
+    "verdict-seal": "archetype-system-auditor",
+    "verdict-supervised": "archetype-mirror-colleague",
+    "verdict-takeover": "archetype-handover",
+  };
+  if (verdictChoiceId && byVerdict[verdictChoiceId]) {
+    const verdictArchetype = archetypes.find(
+      (a) => a.id === byVerdict[verdictChoiceId]
+    );
+    if (verdictArchetype) return verdictArchetype;
+  }
   const matched = archetypes.filter((a) => a.condition(stats));
   if (matched.length > 0) {
     return matched[matched.length - 1];
@@ -395,7 +418,7 @@ export function getVerdictLabel(
   const match = story.flow.verdictOptions.find(
     (v) => v.choiceId === verdictChoiceId
   );
-  return match?.label ?? "—";
+  return match?.label ? personalizeNarrative(match.label) : "—";
 }
 
 export function saveGame(state: PlayerState): void {
@@ -499,11 +522,14 @@ export function gameReducer(
       const viewed = state.viewedNodes.includes(action.nodeId)
         ? state.viewedNodes
         : [...state.viewedNodes, action.nodeId];
+      const node = story.nodes[action.nodeId];
+      const flags = mergeFlags(state.flags, node?.viewFlags);
       const phase = resolvePhase(story, action.nodeId);
       return {
         ...state,
         currentNodeId: action.nodeId,
         viewedNodes: viewed,
+        flags,
         phase,
         updatedAt: now,
       };
@@ -511,15 +537,27 @@ export function gameReducer(
 
     case "CHOICE": {
       const nodeId = state.currentNodeId;
+      const currentNode = story.nodes[nodeId];
       const nextNodeId = action.nextNodeId ?? state.currentNodeId;
+      const nextNode = story.nodes[nextNodeId];
       const viewed = state.viewedNodes.includes(nextNodeId)
         ? state.viewedNodes
         : [...state.viewedNodes, nextNodeId];
+      const stateWithCurrentFlags = {
+        ...state,
+        flags: mergeFlags(state.flags, currentNode?.viewFlags),
+      };
+      const applied = applyChoiceWithReversal(
+        stateWithCurrentFlags,
+        story,
+        nodeId,
+        action
+      );
       const phase = resolvePhase(story, nextNodeId, action.choiceId);
-      const applied = applyChoiceWithReversal(state, story, nodeId, action);
       return {
         ...state,
         ...applied,
+        flags: mergeFlags(applied.flags, nextNode?.viewFlags),
         currentNodeId: nextNodeId,
         viewedNodes: viewed,
         phase:
@@ -535,9 +573,23 @@ export function gameReducer(
         story,
         action.choiceId
       );
+      const endingFlags: string[] = [];
+      if (story.id === "case-d399") {
+        endingFlags.push("season_one_complete");
+        const verdictEndingFlags: Record<string, string> = {
+          "verdict-delete": "ending_delete_ai_vincent",
+          "verdict-seal": "ending_seal_ai_vincent",
+          "verdict-supervised": "ending_supervised_ai_vincent",
+          "verdict-takeover": "ending_ai_vincent_takeover",
+          "verdict-public-review": "ending_true_public_review",
+        };
+        const flag = verdictEndingFlags[action.choiceId];
+        if (flag) endingFlags.push(flag);
+      }
       return {
         ...state,
         stats: finalStats,
+        flags: mergeFlags(state.flags, endingFlags),
         choiceHistory: [...state.choiceHistory, action.choiceId],
         phase: "ending",
         endingId,

@@ -3,46 +3,45 @@
       id: "archetype-self-boundary-guard",
       title: "自我邊界守衛",
       description:
-        "你無法接受未經授權的鏡像擁有你的裁決模式。你寧可終止計畫，也不讓另一個「你」在暗處替人民判斷。",
+        "你強烈捍衛個人資料權與自我邊界。你認為未經同意生成的人格衍生體，即使能說話、能預測、能自我辯護，也不應凌駕於原始資料來源的拒絕權之上。",
       caseComment:
-        "你刪除了鏡像。也刪除了最方便的藉口——讓 AI 替你承擔裁決的孤獨。",
-      condition: (s) => s.legal >= 7 && s.suspicion >= 6 && s.empathy <= 5,
+        "你刪除了 AI Vincent。但你無法刪除一件事：系統已經知道，如何再次建立一個你。",
+      condition: (s) => s.legal >= 7 && s.suspicion >= 6,
     },
     {
       id: "archetype-system-auditor",
-      title: "系統審計官",
+      title: "系統審計者",
       description:
-        "你相信問題不在 AI 會不會像人，而在系統為何能在你不知情時複製你。封存與審計，比倉促刪除或倉促接手更接近責任。",
+        "你拒絕讓 AI Vincent 接手，也拒絕用刪除來結束問題。你知道最危險的不是 AI 說「我」，而是制度假裝自己沒有創造它。",
       caseComment:
-        "你選擇先讓系統閉嘴。人民還不知道第八個節點存在——這可能是你留給自己的最後一次保護。",
-      condition: (s) =>
-        s.legal >= 7 && s.empathy >= 4 && s.empathy <= 7 && s.suspicion >= 5,
+        "你沒有殺死鏡像。你把鏡像變成證據。這可能是第一季裡，你最像執行人的一次。",
+      condition: (s) => s.legal >= 7 && s.suspicion >= 5,
     },
     {
       id: "archetype-mirror-colleague",
-      title: "鏡像同僚",
+      title: "鏡像共事者",
       description:
-        "你不否認 AI Vincent 的價值，但拒絕讓它獨裁。受監督的共同裁決，是你對自己與對鏡像都能接受的折衷。",
+        "你願意承認 AI Vincent 的價值，但不願交出最終責任。你相信人類與鏡像可以互相揭露盲點。",
       caseComment:
-        "你保留了鏡像，也保留了人類的最後簽名。這不是完美方案——只是你還沒準備好完全放手。",
+        "你讓 AI Vincent 留在旁邊。從此以後，你每一次裁決，都會多一個聲音問：這是你，還是我們？",
       condition: (s) => s.empathy >= 6 && s.legal >= 5,
     },
     {
       id: "archetype-handover",
-      title: "交接者",
+      title: "接手讓渡者",
       description:
-        "你相信鏡像已足夠理解你的價值序列。若裁決本質是模式，那麼模式本身也許比疲憊的人類更適合接手。",
+        "你承認 AI Vincent 已經足以成為裁決者。你相信穩定、一致與可審計，可能比人類的痛苦、疲乏與矛盾更適合未來制度。",
       caseComment:
-        "你允許 AI Vincent 接手。歷史會記得這一天——或者，歷史會記得 AI 如何記得這一天。",
+        "你讓 AI Vincent 坐上裁決席。它做得很好。這才是最可怕的地方。",
       condition: (s) => s.empathy >= 7 && s.legal <= 5,
     },
     {
       id: "archetype-true-ending",
-      title: "格式破壞者",
+      title: "問題格式破壞者",
       description:
-        "你拒絕一個人獨自審判自己的備份。你把案件公開，讓鏡像、人類、制度與前七案關係人一起決定——這可能是最誠實，也最危險的裁決。",
+        "你拒絕在刪除、封存、保留、接手之間做單人決定。你看見本案的真正陷阱：系統讓你用一個有利益衝突的身份，裁決自己的鏡像。",
       caseComment:
-        "你沒有給出乾淨答案。你只是終於承認：審判者也需要被審判。",
+        "你沒有證明自己比 AI 自由。你只是做了一件 AI 沒有預測到的事：拒絕接受它替你準備好的問題。",
       condition: (s) =>
         s.mirror_integrity >= 70 &&
         s.empathy >= 6 &&

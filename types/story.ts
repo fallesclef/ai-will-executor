@@ -56,6 +56,8 @@ export interface StoryNode {
     whenFlags?: string[];
     lines: string[];
   }[];
+  /** 首次閱讀此節點時自動寫入的旗標（用於真結局條件等） */
+  viewFlags?: string[];
 }
 
 export interface Ending {
@@ -153,8 +155,24 @@ export interface CaseFlow {
   dynamicContentKeys?: Record<string, string>;
   /** 真結局／隱藏第五裁決選項 */
   secretVerdict?: SecretVerdictRule;
-  /** 關鍵抉擇前顯示 AI Vincent 預測 */
+  /** 關鍵抉擇前顯示鏡像 AI 預測（第八案） */
   predictionEnabled?: boolean;
+  /** 開場介面干擾（選項自動亮起） */
+  interfaceInterference?: {
+    nodeId: string;
+    glowLabel: string;
+  };
+  /** 顯示跨案件語義共振面板 */
+  resonanceEnabled?: boolean;
+  /** 進入這些節點時共振面板脈動提示 */
+  resonancePulseNodeIds?: string[];
+  /** 結案後解鎖的下一案件 */
+  nextCaseUnlock?: {
+    caseId: string;
+    label: string;
+    /** 需完成的先決案件（預設僅需本案已裁決） */
+    requiresCases?: string[];
+  };
 }
 
 export interface Story {
@@ -179,6 +197,8 @@ export interface CaseMeta {
   caseNumber: string;
   description?: string;
   status: "available" | "coming_soon";
+  /** 需先完成指定案件裁決後才建議進入（如第八案） */
+  requiresCompletedCases?: string[];
 }
 
 export type GamePhase =

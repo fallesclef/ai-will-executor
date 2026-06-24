@@ -1,5 +1,6 @@
 import type { PlayerState, StoryNode, Story } from "@/types/story";
 import { buildDynamicContent } from "@/lib/season-history";
+import { getExecutorName, personalizeLines } from "@/lib/executor-identity";
 
 export function resolveNodeContent(
   node: StoryNode,
@@ -28,5 +29,6 @@ export function resolveNodeContent(
     lines.push(...buildDynamicContent(dynamicKeys[node.id]));
   }
 
-  return lines;
+  const name = getExecutorName();
+  return name ? personalizeLines(lines, name) : lines;
 }
