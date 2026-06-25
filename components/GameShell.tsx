@@ -16,6 +16,7 @@ import {
   getVerdictLabel,
   isOnboardingNode,
   isHubNode,
+  isReadOnlyNavigationNode,
 } from "@/lib/engine";
 import { resolveNodeContent } from "@/lib/nodes";
 import { predictCrossroadChoice, predictD399Verdict, predictEvidenceChoice, computeMirrorSyncPercent } from "@/lib/season-history";
@@ -24,7 +25,7 @@ import { NodeView } from "@/components/NodeView";
 import { CaseDashboard } from "@/components/CaseDashboard";
 import { getLocalPlayerId, registerPlayer } from "@/lib/player/client";
 import { queueSync } from "@/lib/sync/client";
-import { getStory, listCases } from "@/data/cases";
+import { getNextCase, getStory, listCases } from "@/data/cases";
 import { hasCompletedRequiredCases, shouldShowResonancePanel } from "@/lib/resonance";
 import { ResonancePanel } from "@/components/ResonancePanel";
 import {
@@ -322,11 +323,7 @@ function GameShellInner({ story }: { story: Story }) {
         )));
 
   if (state.phase === "ending" && ending) {
-    const nextUnlock = flow.nextCaseUnlock;
-    const canEnterNext =
-      nextUnlock &&
-      state.verdictChoiceId &&
-      hasCompletedRequiredCases(nextUnlock.requiresCases ?? [story.id]);
+    const nextCase = getNextCase(story.id);
     return (
       <div className="game-shell">
         <header className="game-header">
@@ -432,25 +429,19 @@ function GameShellInner({ story }: { story: Story }) {
             )}
 
             <footer className="ending-view__footer">
-              {canEnterNext && (
+              {nextCase && (
                 <Link
-                  href={`/case/${nextUnlock.caseId}`}
+                  href={`/case/${nextCase.id}`}
                   className="choice-btn choice-btn--primary"
                 >
                   <span className="choice-btn__marker">{">"}</span>
-                  {nextUnlock.label}
+                  進行下一案：{nextCase.subtitle}
                 </Link>
               )}
-              {story.id === "case-d399" && (
-                <Link href="/" className="choice-btn">
-                  <span className="choice-btn__marker">{">"}</span>
-                  返回案件大廳（第一季完）
-                </Link>
-              )}
-              <button type="button" className="choice-btn" onClick={handleReset}>
+              <Link href="/" className="choice-btn">
                 <span className="choice-btn__marker">{">"}</span>
-                重新審理本案
-              </button>
+                選擇其他案
+              </Link>
             </footer>
           </article>
         </main>
@@ -462,12 +453,14 @@ function GameShellInner({ story }: { story: Story }) {
   const isConsole = isHubNode(story, state.currentNodeId);
   const isVerdict = state.currentNodeId === flow.verdictNodeId;
   const isCrossroad = flow.crossroadNodeIds.includes(state.currentNodeId);
+  const readOnlyNode = isReadOnlyNavigationNode(currentNode);
   const showBack =
     !onboarding &&
     !isConsole &&
     !isVerdict &&
     !isCrossroad &&
-    currentNode?.category !== "contradiction";
+    currentNode?.category !== "contradiction" &&
+    !readOnlyNode;
 
   if (onboarding) {
     return (
@@ -560,7 +553,16 @@ function GameShellInner({ story }: { story: Story }) {
                 content={nodeContent}
                 choices={personalizedChoices}
                 onChoice={handleChoice}
-                onBack={() => handleNavigate(flow.hubNodeId)}
+                onBack={() => {
+                  const backChoice = currentNode?.choices?.find(
+                    (c) => c.id === "back-console" || c.id.endsWith("-back")
+                  );
+                  if (backChoice) {
+                    handleChoice(backChoice);
+                  } else {
+                    handleNavigate(flow.hubNodeId);
+                  }
+                }}
                 showBack={showBack}
                 isVerdict={isVerdict}
                 isCrossroad={isCrossroad}

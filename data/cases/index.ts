@@ -109,4 +109,12 @@ export function getDefaultStory(): Story {
   return CASE_REGISTRY[DEFAULT_CASE_ID]!;
 }
 
+/** 依 CASE_LIST 順序取得下一個可用案件（第八案後為 null） */
+export function getNextCase(currentCaseId: string): CaseMeta | null {
+  const index = CASE_LIST.findIndex((c) => c.id === currentCaseId);
+  if (index === -1 || index >= CASE_LIST.length - 1) return null;
+  const next = CASE_LIST[index + 1];
+  return next.status === "available" ? next : null;
+}
+
 export { caseD047, caseD082, caseD119, caseD144, caseD173, caseD206, caseD301, caseD399 };

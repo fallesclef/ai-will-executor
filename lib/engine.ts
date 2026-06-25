@@ -120,9 +120,17 @@ export function isNavigationChoice(choice: Choice): boolean {
   return choice.id === "back-console" || choice.id.endsWith("-back");
 }
 
+/** 僅供閱讀、單一「返回控制台」即可離開的節點 */
+export function isReadOnlyNavigationNode(node: StoryNode | undefined): boolean {
+  if (!node?.choices?.length || node.choices.length !== 1) return false;
+  const only = node.choices[0];
+  return isNavigationChoice(only) && !hasStatOrFlagEffects(only);
+}
+
 /** 節點是否需要玩家做出選擇（含閱讀後按返回、或證據/訪談的審查選項） */
 export function nodeRequiresChoice(node: StoryNode | undefined): boolean {
   if (!node?.choices?.length) return false;
+  if (isReadOnlyNavigationNode(node)) return false;
   if (node.choices.some(hasStatOrFlagEffects)) return true;
   return node.choices.every(isNavigationChoice);
 }
