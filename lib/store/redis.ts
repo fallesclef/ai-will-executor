@@ -3,6 +3,7 @@ import { Redis } from "@upstash/redis";
 export interface StoredPlayer {
   id: string;
   email: string | null;
+  executorName: string | null;
   createdAt: string;
   lastSeenAt: string;
 }
@@ -22,6 +23,14 @@ export interface StoredProgress {
   updatedAt: string;
 }
 
+export interface RegisteredPlayerRow {
+  id: string;
+  email: string;
+  executorName: string | null;
+  createdAt: string;
+  lastSeenAt: string;
+}
+
 export interface AdminStats {
   enabled: boolean;
   players: number;
@@ -29,6 +38,7 @@ export interface AdminStats {
   completions: Record<string, number>;
   verdicts: Record<string, number>;
   choices: Record<string, number>;
+  registeredPlayers: RegisteredPlayerRow[];
   byStory: Record<
     string,
     {
@@ -70,15 +80,22 @@ const KEYS = {
 
 export async function upsertPlayer(
   playerId: string,
-  email?: string | null
+  email?: string | null,
+  executorName?: string | null
 ): Promise<StoredPlayer> {
   const r = getRedis();
   const now = new Date().toISOString();
   const existing = await r.get<StoredPlayer>(KEYS.player(playerId));
+  const trimmedName =
+    executorName == null ? undefined : executorName.trim();
 
   const player: StoredPlayer = {
     id: playerId,
     email: email?.trim().toLowerCase() ?? existing?.email ?? null,
+    executorName:
+      trimmedName === undefined
+        ? (existing?.executorName ?? null)
+        : trimmedName || null,
     createdAt: existing?.createdAt ?? now,
     lastSeenAt: now,
   };
@@ -138,12 +155,31 @@ export async function getAdminStats(): Promise<AdminStats> {
       completions: {},
       verdicts: {},
       choices: {},
+      registeredPlayers: [],
       byStory: {},
     };
   }
 
   const r = getRedis();
   const playerIds = (await r.smembers(KEYS.players)) as string[];
+  const registeredPlayers: RegisteredPlayerRow[] = [];
+
+  for (const playerId of playerIds) {
+    const player = await r.get<StoredPlayer>(KEYS.player(playerId));
+    if (!player?.email) continue;
+    registeredPlayers.push({
+      id: player.id,
+      email: player.email,
+      executorName: player.executorName ?? null,
+      createdAt: player.createdAt,
+      lastSeenAt: player.lastSeenAt,
+    });
+  }
+
+  registeredPlayers.sort(
+    (a, b) =>
+      new Date(b.lastSeenAt).getTime() - new Date(a.lastSeenAt).getTime()
+  );
 
   const completions: Record<string, number> = {};
   const verdicts: Record<string, number> = {};
@@ -207,6 +243,7 @@ export async function getAdminStats(): Promise<AdminStats> {
     completions,
     verdicts,
     choices,
+    registeredPlayers,
     byStory,
   };
 }

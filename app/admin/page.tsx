@@ -76,6 +76,7 @@ export default function AdminPage() {
             <ul>
               <li>資料庫：{stats.enabled ? "已連線" : "未設定（僅本地試玩）"}</li>
               <li>註冊玩家：{stats.players}</li>
+              <li>已填 Email：{stats.registeredPlayers.length}</li>
             </ul>
           </section>
 
@@ -89,6 +90,40 @@ export default function AdminPage() {
               </ul>
             </section>
           ))}
+
+          <section className="admin__card admin__card--wide">
+            <h2>
+              已註冊玩家（Email）
+              {stats.registeredPlayers.length > 0 &&
+                ` · ${stats.registeredPlayers.length} 人`}
+            </h2>
+            {stats.registeredPlayers.length === 0 ? (
+              <p>尚無填寫 Email 的玩家</p>
+            ) : (
+              <div className="admin__table-wrap">
+                <table className="admin__table">
+                  <thead>
+                    <tr>
+                      <th>Email</th>
+                      <th>執行人姓名</th>
+                      <th>最後活動</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stats.registeredPlayers.map((player) => (
+                      <tr key={player.id}>
+                        <td>{player.email}</td>
+                        <td>{player.executorName ?? "—"}</td>
+                        <td>
+                          {new Date(player.lastSeenAt).toLocaleString("zh-TW")}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
 
           <section className="admin__card admin__card--wide">
             <h2>結局分布</h2>

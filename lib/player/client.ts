@@ -32,12 +32,21 @@ export function setLocalPlayerEmail(email: string): void {
   localStorage.setItem(PLAYER_EMAIL_KEY, email.trim().toLowerCase());
 }
 
-export async function registerPlayer(email?: string): Promise<{
+export async function registerPlayer(
+  email?: string,
+  executorName?: string
+): Promise<{
   playerId: string;
   email: string | null;
 }> {
   const playerId = getLocalPlayerId();
-  const body = email ? { playerId, email } : { playerId };
+  const body: {
+    playerId: string;
+    email?: string;
+    executorName?: string;
+  } = { playerId };
+  if (email) body.email = email;
+  if (executorName) body.executorName = executorName;
 
   try {
     const res = await fetch("/api/player", {

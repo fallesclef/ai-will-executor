@@ -47,7 +47,10 @@ export function CaseLobby({ cases }: CaseLobbyProps) {
   }, []);
 
   const handleRegister = async () => {
-    const result = await registerPlayer(email || undefined);
+    const result = await registerPlayer(
+      email || undefined,
+      hasExecutorName() ? getExecutorName() : undefined
+    );
     if (result.email) setLocalPlayerEmail(result.email);
     setStatus(
       result.email
@@ -67,8 +70,7 @@ export function CaseLobby({ cases }: CaseLobbyProps) {
       <section className="lobby__account">
         <h2 className="lobby__section-title">執行人身分</h2>
         <p className="lobby__hint">
-          可不登入直接試玩。填寫 Email 可跨裝置找回進度（需後台已設定
-          Upstash Redis）。
+          可不登入直接試玩。填寫 Email 可跨裝置找回進度。
         </p>
         <div className="lobby__account-row">
           <input

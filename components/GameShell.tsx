@@ -91,7 +91,10 @@ function GameShellInner({ story }: { story: Story }) {
   const executorName = getExecutorName();
 
   useEffect(() => {
-    void registerPlayer();
+    void registerPlayer(
+      undefined,
+      hasExecutorName() ? getExecutorName() : undefined
+    );
     const saved = loadGame(story.id);
     if (saved) {
       setState({ ...saved, playerId: saved.playerId || getLocalPlayerId() });

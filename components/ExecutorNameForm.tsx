@@ -8,6 +8,10 @@ import {
   sanitizeExecutorName,
   setExecutorName,
 } from "@/lib/executor-identity";
+import {
+  getLocalPlayerEmail,
+  registerPlayer,
+} from "@/lib/player/client";
 
 interface ExecutorNameFormProps {
   variant?: "lobby" | "gate";
@@ -30,6 +34,7 @@ export function ExecutorNameForm({
     const saved = setExecutorName(trimmed);
     setName(saved);
     setError(null);
+    void registerPlayer(getLocalPlayerEmail() ?? undefined, saved);
     onSaved?.(saved);
   };
 

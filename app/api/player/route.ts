@@ -10,6 +10,7 @@ export async function POST(request: Request) {
     const body = (await request.json()) as {
       playerId?: string;
       email?: string;
+      executorName?: string;
     };
 
     if (!body.playerId) {
@@ -33,11 +34,16 @@ export async function POST(request: Request) {
       }
     }
 
-    const player = await upsertPlayer(playerId, body.email ?? null);
+    const player = await upsertPlayer(
+      playerId,
+      body.email ?? null,
+      body.executorName
+    );
 
     return NextResponse.json({
       playerId: player.id,
       email: player.email,
+      executorName: player.executorName,
       storeEnabled: true,
     });
   } catch (error) {
