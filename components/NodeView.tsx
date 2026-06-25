@@ -2,6 +2,7 @@
 
 import { ChoiceButton } from "@/components/ChoiceButton";
 import type { Choice } from "@/types/story";
+import { useLocale } from "@/lib/i18n/context";
 
 interface NodeViewProps {
   title: string;
@@ -38,6 +39,7 @@ export function NodeView({
   fauxGlowLabel,
   verdictHint,
 }: NodeViewProps) {
+  const { t } = useLocale();
   const categoryLabel = categoryLabels[category] ?? category;
 
   return (
@@ -72,7 +74,7 @@ export function NodeView({
             {fauxGlowLabel}
           </span>
           <span className="node-view__faux-glow-note">
-            （在你碰到滑鼠前，這個選項自己亮了起來。）
+            {t("game.fauxGlowNote")}
           </span>
         </p>
       )}
@@ -87,10 +89,10 @@ export function NodeView({
         <footer className="node-view__footer">
           <p className="node-view__choice-prompt">
             {isVerdict
-              ? "【提交裁決】"
+              ? t("node.submitVerdict")
               : isCrossroad
-                ? "【關鍵抉擇】"
-                : "【請選擇】"}
+                ? t("node.crossroad")
+                : t("node.choose")}
           </p>
           <div className="node-view__choices">
             {choices.map((choice) => (
@@ -108,7 +110,10 @@ export function NodeView({
 
       {showBack && onBack && (
         <div className="node-view__back">
-          <ChoiceButton label="返回案件控制台" onClick={onBack} />
+          <ChoiceButton
+            label={t("node.backToConsole")}
+            onClick={onBack}
+          />
         </div>
       )}
     </article>

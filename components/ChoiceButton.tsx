@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { useLocale } from "@/lib/i18n/context";
 
 interface ChoiceButtonProps {
   label: string;
@@ -55,6 +56,7 @@ export function NavButton({
   active = false,
   disabled = false,
 }: NavButtonProps) {
+  const { t } = useLocale();
   return (
     <button
       type="button"
@@ -67,11 +69,13 @@ export function NavButton({
       {(viewed || pendingChoice) && (
         <span className="nav-btn__badges">
           {viewed && (
-            <span className="nav-btn__badge nav-btn__badge--viewed">已閱</span>
+            <span className="nav-btn__badge nav-btn__badge--viewed">
+              {t("common.viewed")}
+            </span>
           )}
           {pendingChoice && (
             <span className="nav-btn__badge nav-btn__badge--pending">
-              未做出選擇
+              {t("common.pendingChoice")}
             </span>
           )}
         </span>

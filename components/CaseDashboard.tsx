@@ -9,6 +9,7 @@ import {
   isNodeChoicePending,
 } from "@/lib/engine";
 import { personalizeNarrative } from "@/lib/executor-identity";
+import { useLocale } from "@/lib/i18n/context";
 
 interface CaseDashboardProps {
   story: Story;
@@ -25,6 +26,7 @@ export function CaseDashboard({
   onVerdict,
   canVerdict,
 }: CaseDashboardProps) {
+  const { t } = useLocale();
   const { flow } = story;
   const contradictionsReady = canAccessContradictions(state, story);
   const nextCrossroad = getNextCrossroadNode(state, story);
@@ -57,7 +59,9 @@ export function CaseDashboard({
                 {flow.categoryLabels[section.id] ?? section.label}
               </span>
               {locked && (
-                <span className="dashboard__lock-tag">需完成前置審閱</span>
+                <span className="dashboard__lock-tag">
+                  {t("dashboard.prereqLock")}
+                </span>
               )}
             </h3>
             <div className="dashboard__grid">
@@ -88,7 +92,7 @@ export function CaseDashboard({
       <section className="dashboard__section">
         <h3 className="dashboard__section-title">
           <span className="dashboard__section-tag dashboard__section-tag--crossroad">
-            關鍵抉擇
+            {t("dashboard.crossroadTitle")}
           </span>
         </h3>
         <button
@@ -100,17 +104,17 @@ export function CaseDashboard({
           {crossroadsDone ? (
             <>
               <span className="verdict-gate__icon">✓</span>
-              <span>三項關鍵抉擇已完成</span>
+              <span>{t("dashboard.crossroadDone")}</span>
             </>
           ) : nextCrossroad ? (
             <>
               <span className="verdict-gate__icon">◆</span>
-              <span>進入關鍵抉擇</span>
+              <span>{t("dashboard.enterCrossroad")}</span>
             </>
           ) : (
             <>
               <span className="verdict-gate__icon">🔒</span>
-              <span>需先完成矛盾整理</span>
+              <span>{t("dashboard.needContradictions")}</span>
             </>
           )}
         </button>
@@ -119,7 +123,7 @@ export function CaseDashboard({
       <section className="dashboard__verdict-section">
         <h3 className="dashboard__section-title">
           <span className="dashboard__section-tag dashboard__section-tag--verdict">
-            最終裁決
+            {t("dashboard.finalVerdict")}
           </span>
         </h3>
         <button
@@ -131,12 +135,12 @@ export function CaseDashboard({
           {canVerdict ? (
             <>
               <span className="verdict-gate__icon">⚖</span>
-              <span>提交裁決</span>
+              <span>{t("dashboard.submitVerdict")}</span>
             </>
           ) : (
             <>
               <span className="verdict-gate__icon">🔒</span>
-              <span>需先完成三項關鍵抉擇</span>
+              <span>{t("dashboard.needCrossroads")}</span>
             </>
           )}
         </button>

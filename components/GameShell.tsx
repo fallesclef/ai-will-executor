@@ -37,20 +37,25 @@ import {
   personalizeNarrative,
 } from "@/lib/executor-identity";
 import { ExecutorNameForm } from "@/components/ExecutorNameForm";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { StoryLocaleBanner } from "@/components/StoryLocaleBanner";
+import { useLocale } from "@/lib/i18n/context";
+import { useReadingScrollAnchor } from "@/lib/use-reading-scroll";
 
 interface GameShellProps {
   caseId: string;
 }
 
 export function GameShell({ caseId }: GameShellProps) {
+  const { t } = useLocale();
   const story = getStory(caseId);
 
   if (!story) {
     return (
       <div className="game-loading">
-        <p className="game-loading__text">案件不存在</p>
+        <p className="game-loading__text">{t("game.caseNotFound")}</p>
         <Link href="/" className="choice-btn" style={{ marginTop: "1rem" }}>
-          返回案件大廳
+          {t("common.returnLobby")}
         </Link>
       </div>
     );
@@ -60,7 +65,8 @@ export function GameShell({ caseId }: GameShellProps) {
 }
 
 function GameShellContent({ story }: { story: Story }) {
-  const caseMeta = listCases().find((c) => c.id === story.id);
+  const { locale, t } = useLocale();
+  const caseMeta = listCases(locale).find((c) => c.id === story.id);
   const prerequisitesMet =
     !caseMeta?.requiresCompletedCases?.length ||
     hasCompletedRequiredCases(caseMeta.requiresCompletedCases);
@@ -68,9 +74,9 @@ function GameShellContent({ story }: { story: Story }) {
   if (!prerequisitesMet) {
     return (
       <div className="game-loading">
-        <p className="game-loading__text">【權限不足】需先完成前七案裁決。</p>
+        <p className="game-loading__text">{t("game.accessDenied")}</p>
         <Link href="/" className="choice-btn" style={{ marginTop: "1rem" }}>
-          返回案件大廳
+          {t("common.returnLobby")}
         </Link>
       </div>
     );
@@ -80,6 +86,7 @@ function GameShellContent({ story }: { story: Story }) {
 }
 
 function GameShellInner({ story }: { story: Story }) {
+  const { locale, t } = useLocale();
   const [state, setState] = useState<PlayerState>(() =>
     createInitialState(story, getLocalPlayerId())
   );
@@ -89,6 +96,12 @@ function GameShellInner({ story }: { story: Story }) {
   const [verdictDwellRemainingMs, setVerdictDwellRemainingMs] = useState(0);
   const { flow } = story;
   const executorName = getExecutorName();
+  const mainRef = useReadingScrollAnchor(
+    state.currentNodeId,
+    state.phase,
+    story,
+    hydrated && nameReady
+  );
 
   useEffect(() => {
     void registerPlayer(
@@ -286,17 +299,23 @@ function GameShellInner({ story }: { story: Story }) {
   const predictionLabel = useMemo(() => {
     if (!activePrediction) return undefined;
     const label = personalizeNarrative(activePrediction.label, executorName);
-    return `${getAiExecutorName(executorName)} 預測：${label}${
-      verdictPrediction
-        ? `（信心 ${verdictPrediction.confidence}%）`
-        : ""
-    }`;
-  }, [activePrediction, executorName, verdictPrediction]);
+    if (verdictPrediction) {
+      return t("game.prediction", {
+        aiName: getAiExecutorName(executorName),
+        label,
+        confidence: verdictPrediction.confidence,
+      });
+    }
+    return t("game.predictionNoConfidence", {
+      aiName: getAiExecutorName(executorName),
+      label,
+    });
+  }, [activePrediction, executorName, verdictPrediction, t]);
 
   if (!hydrated) {
     return (
       <div className="game-loading">
-        <span className="game-loading__text">系統載入中...</span>
+        <span className="game-loading__text">{t("common.loading")}</span>
       </div>
     );
   }
@@ -304,6 +323,10 @@ function GameShellInner({ story }: { story: Story }) {
   if (!nameReady) {
     return (
       <div className="game-shell game-shell--onboarding">
+        <header className="game-header game-header--onboarding game-header--onboarding-gate">
+          <span className="game-header__sys">{t("common.sys")}</span>
+          <LanguageSwitcher />
+        </header>
         <ExecutorNameForm
           variant="gate"
           onSaved={() => setNameReady(true)}
@@ -326,21 +349,27 @@ function GameShellInner({ story }: { story: Story }) {
         )));
 
   if (state.phase === "ending" && ending) {
-    const nextCase = getNextCase(story.id);
+    const nextCase = getNextCase(story.id, locale);
     return (
       <div className="game-shell">
         <header className="game-header">
           <div className="game-header__brand">
-            <span className="game-header__sys">AWE SYSTEM v3.1</span>
+            <span className="game-header__sys">{t("common.sys")}</span>
             <h1 className="game-header__title">{story.title}</h1>
+          </div>
+          <div className="game-header__actions">
+            <LanguageSwitcher />
           </div>
         </header>
 
-        <main className="game-main game-main--ending">
+        <main ref={mainRef} className="game-main game-main--ending">
+          <StoryLocaleBanner caseId={story.id} />
           <article className="ending-view">
             {ending.isHidden && (
               <div className="ending-view__hidden-badge">
-                {hiddenEndingActive ? "真結局解鎖" : "隱藏結局解鎖"}
+                {hiddenEndingActive
+                  ? t("game.trueEnding")
+                  : t("game.hiddenEnding")}
               </div>
             )}
             <header className="ending-view__header">
@@ -393,10 +422,14 @@ function GameShellInner({ story }: { story: Story }) {
 
             {personality && (
               <section className="personality-report">
-                <h3 className="personality-report__title">裁決人格報告</h3>
+                <h3 className="personality-report__title">
+                  {t("game.personalityReport")}
+                </h3>
                 <div className="personality-report__card">
                   <p className="personality-report__verdict">
-                    你的裁決：{getVerdictLabel(story, state.verdictChoiceId)}
+                    {t("game.yourVerdict", {
+                      label: getVerdictLabel(story, state.verdictChoiceId),
+                    })}
                   </p>
                   <span className="personality-report__archetype">
                     {personality.title}
@@ -405,22 +438,39 @@ function GameShellInner({ story }: { story: Story }) {
                     {personalizeNarrative(personality.description, executorName)}
                   </p>
                   <p className="personality-report__case">
-                    本案評語：
+                    {t("game.caseComment")}
                     {personalizeNarrative(personality.caseComment, executorName)}
                   </p>
                   <div className="personality-report__stats">
-                    <span>法理 {state.stats.legal}</span>
-                    <span>共感 {state.stats.empathy}</span>
-                    <span>懷疑 {state.stats.suspicion}</span>
+                    <span>
+                      {t("stats.legal")} {state.stats.legal}
+                    </span>
+                    <span>
+                      {t("stats.empathy")} {state.stats.empathy}
+                    </span>
+                    <span>
+                      {t("stats.suspicion")} {state.stats.suspicion}
+                    </span>
                     {story.flow.publicStatsEnabled && (
                       <>
-                        <span>民主信任 {state.stats.public_trust}</span>
-                        <span>社會穩定 {state.stats.social_stability}</span>
-                        <span>真相壓力 {state.stats.truth_pressure}</span>
+                        <span>
+                          {t("stats.public_trust")} {state.stats.public_trust}
+                        </span>
+                        <span>
+                          {t("stats.social_stability")}{" "}
+                          {state.stats.social_stability}
+                        </span>
+                        <span>
+                          {t("stats.truth_pressure")}{" "}
+                          {state.stats.truth_pressure}
+                        </span>
                       </>
                     )}
                     {story.flow.mirrorStatsEnabled && (
-                      <span>鏡像完整度 {state.stats.mirror_integrity}</span>
+                      <span>
+                        {t("stats.mirror_integrity")}{" "}
+                        {state.stats.mirror_integrity}
+                      </span>
                     )}
                   </div>
                 </div>
@@ -438,12 +488,12 @@ function GameShellInner({ story }: { story: Story }) {
                   className="choice-btn choice-btn--primary"
                 >
                   <span className="choice-btn__marker">{">"}</span>
-                  進行下一案：{nextCase.subtitle}
+                  {t("game.nextCase", { subtitle: nextCase.subtitle })}
                 </Link>
               )}
               <Link href="/" className="choice-btn">
                 <span className="choice-btn__marker">{">"}</span>
-                選擇其他案
+                {t("game.chooseOtherCase")}
               </Link>
             </footer>
           </article>
@@ -469,9 +519,11 @@ function GameShellInner({ story }: { story: Story }) {
     return (
       <div className="game-shell game-shell--onboarding">
         <header className="game-header game-header--onboarding">
-          <span className="game-header__sys">AWE SYSTEM v3.1</span>
+          <span className="game-header__sys">{t("common.sys")}</span>
+          <LanguageSwitcher />
         </header>
-        <main className="game-main game-main--onboarding">
+        <main ref={mainRef} className="game-main game-main--onboarding">
+          <StoryLocaleBanner caseId={story.id} />
           {currentNode && (
             <NodeView
               title={personalizeNarrative(currentNode.title, executorName)}
@@ -489,7 +541,7 @@ function GameShellInner({ story }: { story: Story }) {
           )}
         </main>
         <footer className="game-footer">
-          <span>AI WILL EXECUTOR · DIGITAL PROBATE DIVISION</span>
+          <span>{t("common.footer")}</span>
         </footer>
       </div>
     );
@@ -500,39 +552,44 @@ function GameShellInner({ story }: { story: Story }) {
     secretVerdict &&
     secretUnlocked &&
     !verdictDwellReady
-      ? `【系統】偵測到未解鎖裁決選項……請在當前畫面停留（約 ${Math.ceil(verdictDwellRemainingMs / 1000)} 秒），勿急於提交。`
+      ? t("game.verdictDwell", {
+          seconds: Math.ceil(verdictDwellRemainingMs / 1000),
+        })
       : state.currentNodeId === flow.verdictNodeId &&
           secretVerdict &&
           !secretUnlocked
-        ? "【系統】隱藏裁決尚未解鎖。請完成必要證據、訪談與關鍵抉擇後再返回。"
+        ? t("game.verdictLocked")
         : undefined;
 
   return (
     <div className="game-shell">
       <header className="game-header">
         <div className="game-header__brand">
-          <span className="game-header__sys">AWE SYSTEM v3.1</span>
+          <span className="game-header__sys">{t("common.sys")}</span>
           <h1 className="game-header__title">{story.title}</h1>
           <p className="game-header__subtitle">{story.subtitle}</p>
         </div>
         <div className="game-header__actions">
+          <LanguageSwitcher />
           <Link href="/" className="header-btn header-btn--link">
-            案件列表
+            {t("common.caseList")}
           </Link>
           <button type="button" className="header-btn" onClick={handleReset}>
-            重置案件
+            {t("common.resetCase")}
           </button>
         </div>
       </header>
 
+      <StoryLocaleBanner caseId={story.id} />
+
       <div className="game-body">
         <StatusPanel state={state} story={story} />
 
-        <main className="game-main">
+        <main ref={mainRef} className="game-main">
           {isConsole ? (
             <div className="main-content">
               <header className="main-content__header">
-                <h2 className="main-content__title">案件控制台</h2>
+                <h2 className="main-content__title">{t("game.consoleTitle")}</h2>
                 <span className="main-content__id">{story.caseNumber}</span>
               </header>
               <CaseDashboard
@@ -580,15 +637,17 @@ function GameShellInner({ story }: { story: Story }) {
             </div>
           ) : (
             <div className="main-content">
-              <p>節點不存在</p>
+              <p>{t("game.nodeMissing")}</p>
             </div>
           )}
         </main>
       </div>
 
       <footer className="game-footer">
-        <span>AI WILL EXECUTOR · DIGITAL PROBATE DIVISION</span>
-        <span>{new Date().toLocaleDateString("zh-TW")}</span>
+        <span>{t("common.footer")}</span>
+        <span>
+          {new Date().toLocaleDateString(locale === "en" ? "en-US" : "zh-TW")}
+        </span>
       </footer>
     </div>
   );

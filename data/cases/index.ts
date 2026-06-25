@@ -1,4 +1,6 @@
 import type { CaseMeta, Story } from "@/types/story";
+import type { Locale } from "@/lib/i18n/types";
+import { EN_CASE_META } from "@/data/locales/en/cases-meta";
 import { caseD047 } from "./case-d047";
 import { caseD082 } from "./case-d082";
 import { caseD119 } from "./case-d119";
@@ -97,12 +99,19 @@ export const CASE_LIST: CaseMeta[] = [
   },
 ];
 
-export function getStory(caseId: string): Story | undefined {
-  return CASE_REGISTRY[caseId];
+function localizeCaseMeta(caseMeta: CaseMeta, locale: Locale): CaseMeta {
+  if (locale !== "en") return caseMeta;
+  const en = EN_CASE_META[caseMeta.id];
+  if (!en) return caseMeta;
+  return { ...caseMeta, ...en };
 }
 
-export function listCases(): CaseMeta[] {
-  return CASE_LIST;
+export function listCases(locale: Locale = "zh-TW"): CaseMeta[] {
+  return CASE_LIST.map((c) => localizeCaseMeta(c, locale));
+}
+
+export function getStory(caseId: string, _locale: Locale = "zh-TW"): Story | undefined {
+  return CASE_REGISTRY[caseId];
 }
 
 export function getDefaultStory(): Story {
@@ -110,10 +119,14 @@ export function getDefaultStory(): Story {
 }
 
 /** 依 CASE_LIST 順序取得下一個可用案件（第八案後為 null） */
-export function getNextCase(currentCaseId: string): CaseMeta | null {
-  const index = CASE_LIST.findIndex((c) => c.id === currentCaseId);
-  if (index === -1 || index >= CASE_LIST.length - 1) return null;
-  const next = CASE_LIST[index + 1];
+export function getNextCase(
+  currentCaseId: string,
+  locale: Locale = "zh-TW"
+): CaseMeta | null {
+  const cases = listCases(locale);
+  const index = cases.findIndex((c) => c.id === currentCaseId);
+  if (index === -1 || index >= cases.length - 1) return null;
+  const next = cases[index + 1];
   return next.status === "available" ? next : null;
 }
 

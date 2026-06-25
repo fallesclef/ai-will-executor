@@ -12,6 +12,7 @@ import {
   getLocalPlayerEmail,
   registerPlayer,
 } from "@/lib/player/client";
+import { useLocale } from "@/lib/i18n/context";
 
 interface ExecutorNameFormProps {
   variant?: "lobby" | "gate";
@@ -22,13 +23,16 @@ export function ExecutorNameForm({
   variant = "lobby",
   onSaved,
 }: ExecutorNameFormProps) {
+  const { t } = useLocale();
   const [name, setName] = useState(getExecutorName());
   const [error, setError] = useState<string | null>(null);
 
   const handleSave = () => {
     const trimmed = sanitizeExecutorName(name);
     if (!isValidExecutorName(trimmed)) {
-      setError(`請輸入 ${1}–${EXECUTOR_NAME_MAX} 字元（中文、英文或數字）`);
+      setError(
+        t("executor.nameError", { min: 1, max: EXECUTOR_NAME_MAX })
+      );
       return;
     }
     const saved = setExecutorName(trimmed);
@@ -42,22 +46,18 @@ export function ExecutorNameForm({
     return (
       <div className="executor-gate">
         <div className="executor-gate__card">
-          <span className="executor-gate__sys">AWE SYSTEM v3.1</span>
-          <h1 className="executor-gate__title">執行人登記</h1>
-          <p className="executor-gate__hint">
-            數位遺囑執行署需要記錄你的裁決者身份。
-          </p>
-          <p className="executor-gate__hint">
-            第八案起，系統可能依你的姓名建立鏡像備份檔案——請使用你願意在案件中看見的名字。
-          </p>
+          <span className="executor-gate__sys">{t("common.sys")}</span>
+          <h1 className="executor-gate__title">{t("executor.gateTitle")}</h1>
+          <p className="executor-gate__hint">{t("executor.gateHint1")}</p>
+          <p className="executor-gate__hint">{t("executor.gateHint2")}</p>
           <label className="executor-gate__label" htmlFor="executor-name-gate">
-            執行人姓名
+            {t("executor.nameLabel")}
           </label>
           <input
             id="executor-name-gate"
             type="text"
             className="executor-gate__input"
-            placeholder="例如：陳以安、Lin、Alex…"
+            placeholder={t("executor.gatePlaceholder")}
             value={name}
             maxLength={EXECUTOR_NAME_MAX}
             onChange={(e) => setName(e.target.value)}
@@ -65,9 +65,13 @@ export function ExecutorNameForm({
             autoFocus
           />
           {error && <p className="executor-gate__error">{error}</p>}
-          <button type="button" className="choice-btn choice-btn--primary" onClick={handleSave}>
+          <button
+            type="button"
+            className="choice-btn choice-btn--primary"
+            onClick={handleSave}
+          >
             <span className="choice-btn__marker">{">"}</span>
-            確認身份並進入
+            {t("executor.gateConfirm")}
           </button>
         </div>
       </div>
@@ -77,18 +81,16 @@ export function ExecutorNameForm({
   return (
     <div className="lobby__name-block">
       <label className="lobby__name-label" htmlFor="executor-name-lobby">
-        執行人姓名 <span className="lobby__required">*</span>
+        {t("executor.nameLabel")}{" "}
+        <span className="lobby__required">{t("executor.required")}</span>
       </label>
-      <p className="lobby__hint">
-        將顯示於案件登入與第八案鏡像 AI（AI
-        ［你的姓名］）。可隨時修改，不影響已存進度。
-      </p>
+      <p className="lobby__hint">{t("executor.lobbyHint")}</p>
       <div className="lobby__account-row">
         <input
           id="executor-name-lobby"
           type="text"
           className="lobby__input"
-          placeholder="輸入你的姓名"
+          placeholder={t("executor.namePlaceholder")}
           value={name}
           maxLength={EXECUTOR_NAME_MAX}
           onChange={(e) => setName(e.target.value)}
@@ -97,13 +99,13 @@ export function ExecutorNameForm({
         />
         <button type="button" className="choice-btn" onClick={handleSave}>
           <span className="choice-btn__marker">{">"}</span>
-          儲存姓名
+          {t("executor.saveName")}
         </button>
       </div>
       {error && <p className="lobby__status lobby__status--error">{error}</p>}
       {hasValidSavedName(name) && (
         <p className="lobby__status">
-          鏡像代號預覽：AI {sanitizeExecutorName(name)}
+          {t("executor.mirrorPreview", { name: sanitizeExecutorName(name) })}
         </p>
       )}
     </div>
