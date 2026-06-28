@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import type { CaseMeta } from "@/types/story";
 import {
   getLocalPlayerEmail,
@@ -27,30 +27,56 @@ import { listCases } from "@/data/cases";
 import { isStoryAvailableInLocale } from "@/lib/i18n/locale";
 import { resonanceTierLabel } from "@/lib/i18n/resonance-ui";
 import { trackEmailRegister } from "@/lib/analytics/events";
+import { fetchLobbyCaseStatuses } from "@/lib/progress/client";
+import {
+  isCaseLobbyCompleted,
+  isCaseLobbyInProgress,
+  type CaseLobbyStatus,
+} from "@/lib/progress/lobby-status";
+
+const SEASON_PREREQ_IDS = [
+  "case-d047",
+  "case-d082",
+  "case-d119",
+  "case-d144",
+  "case-d173",
+  "case-d206",
+  "case-d301",
+] as const;
 
 export function CaseLobby() {
   const { locale, t } = useLocale();
   const cases = listCases(locale);
+  const caseIds = cases.map((c) => c.id);
   const [email, setEmail] = useState(getLocalPlayerEmail() ?? "");
   const [status, setStatus] = useState<string | null>(null);
   const [seasonReady, setSeasonReady] = useState(false);
   const [resonanceTier, setResonanceTier] = useState(0);
+  const [caseStatuses, setCaseStatuses] = useState<
+    Record<string, CaseLobbyStatus>
+  >({});
   const [, bumpName] = useState(0);
 
-  useEffect(() => {
+  const refreshProgress = useCallback(async () => {
+    const statuses = await fetchLobbyCaseStatuses(caseIds);
+    setCaseStatuses(statuses);
     setSeasonReady(
-      hasCompletedRequiredCases([
-        "case-d047",
-        "case-d082",
-        "case-d119",
-        "case-d144",
-        "case-d173",
-        "case-d206",
-        "case-d301",
-      ])
+      hasCompletedRequiredCases([...SEASON_PREREQ_IDS])
     );
     setResonanceTier(getResonanceTierLevel());
-  }, []);
+  }, [caseIds]);
+
+  useEffect(() => {
+    void refreshProgress();
+  }, [refreshProgress]);
+
+  useEffect(() => {
+    const onFocus = () => {
+      void refreshProgress();
+    };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [refreshProgress]);
 
   const handleRegister = async () => {
     const result = await registerPlayer(
@@ -64,7 +90,10 @@ export function CaseLobby() {
         ? t("lobby.linkedAccount", { email: result.email })
         : t("lobby.anonymousIdentity")
     );
+    await refreshProgress();
   };
+
+  const hasLinkedEmail = Boolean(getLocalPlayerEmail());
 
   return (
     <div className="lobby">
@@ -83,6 +112,9 @@ export function CaseLobby() {
       <section className="lobby__account">
         <h2 className="lobby__section-title">{t("lobby.accountTitle")}</h2>
         <p className="lobby__hint">{t("lobby.accountHint")}</p>
+        {hasLinkedEmail && (
+          <p className="lobby__hint lobby__hint--sync">{t("lobby.progressCloudHint")}</p>
+        )}
         <div className="lobby__account-row">
           <input
             type="email"
@@ -122,22 +154,40 @@ export function CaseLobby() {
         })()}
         <div className="lobby__grid">
           {cases.map((c) => {
+            const progress = caseStatuses[c.id];
+            const completed = isCaseLobbyCompleted(progress);
+            const inProgress = isCaseLobbyInProgress(progress);
             const locked =
               c.requiresCompletedCases?.length &&
               !hasCompletedRequiredCases(c.requiresCompletedCases);
             const storyReady = isStoryAvailableInLocale(c.id, locale);
             return (
-              <article key={c.id} className="lobby__card">
+              <article
+                key={c.id}
+                className={`lobby__card${completed ? " lobby__card--completed" : ""}${inProgress ? " lobby__card--in-progress" : ""}`}
+              >
                 <div className="lobby__card-head">
                   <span className="lobby__case-id">{c.caseNumber}</span>
-                  {c.status === "coming_soon" && (
-                    <span className="lobby__badge">{t("lobby.comingSoon")}</span>
-                  )}
-                  {!storyReady && c.status === "available" && (
-                    <span className="lobby__badge lobby__badge--locale">
-                      {t("lobby.storyEnSoon")}
-                    </span>
-                  )}
+                  <div className="lobby__card-badges">
+                    {completed && (
+                      <span className="lobby__badge lobby__badge--completed">
+                        {t("lobby.caseCompleted")}
+                      </span>
+                    )}
+                    {!completed && inProgress && (
+                      <span className="lobby__badge lobby__badge--progress">
+                        {t("lobby.caseInProgress")}
+                      </span>
+                    )}
+                    {c.status === "coming_soon" && (
+                      <span className="lobby__badge">{t("lobby.comingSoon")}</span>
+                    )}
+                    {!storyReady && c.status === "available" && (
+                      <span className="lobby__badge lobby__badge--locale">
+                        {t("lobby.storyEnSoon")}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <h3 className="lobby__card-title">{c.subtitle}</h3>
                 {c.description && (
@@ -159,8 +209,15 @@ export function CaseLobby() {
                     {t("lobby.needExecutorName")}
                   </span>
                 ) : c.status === "available" ? (
-                  <Link href={`/case/${c.id}`} className="lobby__play-btn">
-                    {t("lobby.acceptCase")}
+                  <Link
+                    href={`/case/${c.id}`}
+                    className={`lobby__play-btn${completed ? " lobby__play-btn--replay" : ""}`}
+                  >
+                    {completed
+                      ? t("lobby.replayCase")
+                      : inProgress
+                        ? t("lobby.continueCase")
+                        : t("lobby.acceptCase")}
                   </Link>
                 ) : (
                   <span className="lobby__play-btn lobby__play-btn--disabled">

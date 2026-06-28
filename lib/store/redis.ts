@@ -117,6 +117,36 @@ export async function getPlayerByEmail(
   return r.get<string>(KEYS.email(email.trim().toLowerCase()));
 }
 
+export async function getPlayerProgressSummary(
+  playerId: string,
+  storyIds: string[]
+): Promise<Record<string, { completed: boolean; inProgress: boolean }>> {
+  const r = getRedis();
+  const result: Record<string, { completed: boolean; inProgress: boolean }> =
+    {};
+
+  for (const storyId of storyIds) {
+    const progress = await r.get<StoredProgress>(
+      KEYS.progress(storyId, playerId)
+    );
+
+    if (!progress) {
+      result[storyId] = { completed: false, inProgress: false };
+      continue;
+    }
+
+    const completed =
+      !!progress.verdictChoiceId || progress.phase === "ending";
+    const inProgress =
+      !completed &&
+      (progress.choiceHistory.length > 0 || progress.phase !== "intro");
+
+    result[storyId] = { completed, inProgress };
+  }
+
+  return result;
+}
+
 export async function saveProgress(
   progress: StoredProgress,
   event?: {

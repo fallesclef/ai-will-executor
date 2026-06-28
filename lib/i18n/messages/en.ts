@@ -23,7 +23,7 @@ const en: Messages = {
     subtitle: "Digital Probate Division · Case Lobby",
     accountTitle: "Executor Identity",
     accountHint:
-      "Play without signing in. Add an email to recover progress across devices.",
+      "Play without signing in. Link an email to sync Completed / In progress badges across devices.",
     emailPlaceholder: "email@example.com (optional)",
     register: "Register / Link",
     linkedAccount: "Linked account: {email}",
@@ -39,6 +39,12 @@ const en: Messages = {
     acceptCase: "Take Case",
     notAvailable: "Not available yet",
     storyEnSoon: "English story coming soon",
+    caseCompleted: "Completed",
+    caseInProgress: "In progress",
+    replayCase: "Replay case",
+    continueCase: "Continue case",
+    progressCloudHint:
+      "Email linked: cases finished on any device show as Completed in the lobby. Full saves stay on each device; cloud save restore is in development.",
   },
   howToPlay: {
     tag: "GUIDE",
@@ -55,8 +61,10 @@ const en: Messages = {
     step5:
       "Cases unlock in order: Case 8 requires verdicts in cases 1–7. After an ending, continue to the next case or return to the lobby.",
     step6:
-      "Progress auto-saves in your browser. Email is optional for cross-device identity (not required to play).",
-    tip: 'Tip: use "Back to Case Lobby" or "Reset Case" anytime to leave or restart a case.',
+      "Progress auto-saves in this browser. No email required to play; switching devices or clearing browser data starts fresh.",
+    step7:
+      "With a linked email, the lobby shows Completed / In progress per case (including finishes on other devices). Full saves are not restored across devices yet—cloud save restore is planned.",
+    tip: 'Return to the lobby or "Reset Case" anytime. Replay completed cases freely; cross-device sync is status-only for now, not mid-case save restore.',
   },
   changelog: {
     title: "Release Notes",

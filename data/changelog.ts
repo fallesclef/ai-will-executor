@@ -15,6 +15,27 @@ export interface ChangelogRelease {
 /** Newest first. Add a release here whenever you ship an update. */
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: "0.2.1",
+    date: "2026-06-28",
+    items: [
+      {
+        type: "feature",
+        zh: "大廳案件卡顯示「已審理／審理中」，已完成可再次審理",
+        en: "Lobby case cards show Completed / In progress; finished cases can be replayed",
+      },
+      {
+        type: "feature",
+        zh: "註冊 Email 後，跨裝置同步審理狀態（本機或雲端完成皆標示已審理）",
+        en: "Linked email syncs case status across devices (completed on either side counts)",
+      },
+      {
+        type: "improvement",
+        zh: "玩法說明補充：完整存檔留本機，跨裝置目前僅同步狀態；「雲端還原存檔」規劃中",
+        en: "How-to-play clarifies: full saves stay local; cross-device is status-only; cloud save restore planned",
+      },
+    ],
+  },
+  {
     version: "0.2.0",
     date: "2026-06-25",
     items: [

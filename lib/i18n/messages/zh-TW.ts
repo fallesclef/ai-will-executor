@@ -20,7 +20,8 @@ const zhTW = {
     title: "AI遺囑執行人",
     subtitle: "數位遺囑執行署 · 案件大廳",
     accountTitle: "執行人身分",
-    accountHint: "可不登入直接試玩。填寫 Email 可跨裝置找回進度。",
+    accountHint:
+      "可不登入直接試玩。填寫 Email 可跨裝置同步「已審理／審理中」狀態。",
     emailPlaceholder: "email@example.com（選填）",
     register: "註冊 / 連結",
     linkedAccount: "已連結帳號：{email}",
@@ -35,6 +36,12 @@ const zhTW = {
     acceptCase: "接手案件",
     notAvailable: "尚未開放",
     storyEnSoon: "英文劇情即將推出",
+    caseCompleted: "已審理",
+    caseInProgress: "審理中",
+    replayCase: "再次審理",
+    continueCase: "繼續審理",
+    progressCloudHint:
+      "已連結 Email：任一裝置完成的案件，大廳皆顯示「已審理」。完整存檔仍留各裝置本機，「雲端還原存檔」開發中。",
   },
   howToPlay: {
     tag: "新手指南",
@@ -51,8 +58,10 @@ const zhTW = {
     step5:
       "案件依序解鎖：第八案需先完成前七案裁決。結局後可「進行下一案」或返回大廳。",
     step6:
-      "進度自動儲存於本機瀏覽器；選填 Email 可協助跨裝置找回身分（不影響單機試玩）。",
-    tip: "提示：隨時可從案件內「返回案件大廳」或「重置案件」重新開始該案。",
+      "進度自動儲存在此裝置的瀏覽器。未註冊 Email 也可完整遊玩；換裝置或清除瀏覽資料後，需重新開始。",
+    step7:
+      "註冊 Email 後，大廳會同步顯示各案「已審理／審理中」（含其他裝置完成的案件）。完整存檔尚未跨裝置還原，「雲端還原存檔」功能規劃中。",
+    tip: "可隨時「返回大廳」或「重置案件」。已完成案件可再次審理；跨裝置目前僅同步狀態，尚無法接續同一存檔進度。",
   },
   changelog: {
     title: "版本更新",

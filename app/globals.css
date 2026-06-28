@@ -1393,23 +1393,54 @@ body {
   gap: 0.5rem;
 }
 
+.lobby__card--completed {
+  border-color: rgba(56, 161, 105, 0.45);
+}
+
+.lobby__card--in-progress {
+  border-color: rgba(214, 158, 46, 0.35);
+}
+
 .lobby__card-head {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.lobby__card-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  justify-content: flex-end;
 }
 
 .lobby__case-id {
   font-family: var(--font-mono);
   font-size: 0.7rem;
   color: var(--accent-cyan);
+  flex-shrink: 0;
 }
 
 .lobby__badge {
+  font-family: var(--font-mono);
   font-size: 0.65rem;
   color: var(--text-dim);
   border: 1px solid var(--border-dim);
   padding: 0.15rem 0.4rem;
+  letter-spacing: 0.04em;
+}
+
+.lobby__badge--completed {
+  color: var(--accent-green);
+  border-color: var(--accent-green);
+  background: rgba(56, 161, 105, 0.1);
+}
+
+.lobby__badge--progress {
+  color: var(--accent-amber);
+  border-color: var(--accent-amber);
+  background: rgba(214, 158, 46, 0.08);
 }
 
 .lobby__card-title {
@@ -1440,6 +1471,18 @@ body {
   opacity: 0.4;
   border-color: var(--border);
   color: var(--text-dim);
+}
+
+.lobby__play-btn--replay {
+  color: var(--accent-green);
+  border-color: var(--accent-green);
+}
+
+.lobby__hint--sync {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  margin-top: -0.5rem;
 }
 
 .lobby__footer {

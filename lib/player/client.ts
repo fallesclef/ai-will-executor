@@ -22,6 +22,11 @@ export function getLocalPlayerId(): string {
   return id;
 }
 
+export function setLocalPlayerId(id: string): void {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(PLAYER_KEY, id);
+}
+
 export function getLocalPlayerEmail(): string | null {
   if (typeof window === "undefined") return null;
   return localStorage.getItem(PLAYER_EMAIL_KEY);
@@ -56,6 +61,7 @@ export async function registerPlayer(
     });
     if (res.ok) {
       const data = (await res.json()) as { playerId: string; email?: string };
+      if (data.playerId) setLocalPlayerId(data.playerId);
       if (data.email) setLocalPlayerEmail(data.email);
       return { playerId: data.playerId, email: data.email ?? null };
     }
