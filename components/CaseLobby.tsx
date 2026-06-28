@@ -27,7 +27,14 @@ import { listCases } from "@/data/cases";
 import { isStoryAvailableInLocale } from "@/lib/i18n/locale";
 import { resonanceTierLabel } from "@/lib/i18n/resonance-ui";
 import { trackEmailRegister } from "@/lib/analytics/events";
+import { CloudRestoreBanner } from "@/components/CloudRestoreBanner";
 import { fetchLobbyCaseStatuses } from "@/lib/progress/client";
+import {
+  applyCloudRestore,
+  checkCloudRestoreOffer,
+  markRestoreOfferDismissed,
+  type RestoreCandidate,
+} from "@/lib/progress/restore";
 import {
   isCaseLobbyCompleted,
   isCaseLobbyInProgress,
@@ -55,7 +62,16 @@ export function CaseLobby() {
   const [caseStatuses, setCaseStatuses] = useState<
     Record<string, CaseLobbyStatus>
   >({});
+  const [restoreOffer, setRestoreOffer] = useState<{
+    candidates: RestoreCandidate[];
+    cloudUpdatedAt: string;
+  } | null>(null);
   const [, bumpName] = useState(0);
+
+  const checkRestore = useCallback(async () => {
+    const offer = await checkCloudRestoreOffer(caseIds);
+    setRestoreOffer(offer);
+  }, [caseIds]);
 
   const refreshProgress = useCallback(async () => {
     const statuses = await fetchLobbyCaseStatuses(caseIds);
@@ -64,7 +80,8 @@ export function CaseLobby() {
       hasCompletedRequiredCases([...SEASON_PREREQ_IDS])
     );
     setResonanceTier(getResonanceTierLevel());
-  }, [caseIds]);
+    await checkRestore();
+  }, [caseIds, checkRestore]);
 
   useEffect(() => {
     void refreshProgress();
@@ -93,6 +110,21 @@ export function CaseLobby() {
     await refreshProgress();
   };
 
+  const handleRestore = () => {
+    if (!restoreOffer) return;
+    applyCloudRestore(restoreOffer.candidates);
+    markRestoreOfferDismissed(restoreOffer.cloudUpdatedAt);
+    setRestoreOffer(null);
+    void refreshProgress();
+    setStatus(t("cloudRestore.done"));
+  };
+
+  const handleRestoreDismiss = () => {
+    if (!restoreOffer) return;
+    markRestoreOfferDismissed(restoreOffer.cloudUpdatedAt);
+    setRestoreOffer(null);
+  };
+
   const hasLinkedEmail = Boolean(getLocalPlayerEmail());
 
   return (
@@ -108,6 +140,14 @@ export function CaseLobby() {
 
       <ChangelogPanel />
       <HowToPlay />
+
+      {restoreOffer && (
+        <CloudRestoreBanner
+          candidates={restoreOffer.candidates}
+          onRestore={handleRestore}
+          onDismiss={handleRestoreDismiss}
+        />
+      )}
 
       <section className="lobby__account">
         <h2 className="lobby__section-title">{t("lobby.accountTitle")}</h2>

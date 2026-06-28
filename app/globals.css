@@ -1332,6 +1332,75 @@ body {
   color: var(--accent-amber);
 }
 
+/* ── Cloud Restore ── */
+
+.cloud-restore {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+  padding: 1rem 1.15rem;
+  border: 1px solid var(--accent-cyan);
+  background: linear-gradient(
+    135deg,
+    rgba(61, 158, 207, 0.14) 0%,
+    var(--bg-secondary) 60%
+  );
+}
+
+.cloud-restore__tag {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.12em;
+  color: var(--accent-cyan);
+  display: block;
+  margin-bottom: 0.35rem;
+}
+
+.cloud-restore__title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text-reading);
+  margin-bottom: 0.35rem;
+}
+
+.cloud-restore__summary {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: 0.5rem;
+}
+
+.cloud-restore__list {
+  list-style: disc;
+  padding-left: 1.25rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+}
+
+.cloud-restore__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.cloud-restore__btn {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  padding: 0.45rem 0.85rem;
+  border: 1px solid var(--border-dim);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.cloud-restore__btn--primary {
+  border-color: var(--accent-cyan);
+  color: var(--accent-cyan);
+  background: rgba(61, 158, 207, 0.1);
+}
+
 .lobby__section-title {
   font-family: var(--font-mono);
   font-size: 0.75rem;

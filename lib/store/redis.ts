@@ -1,4 +1,12 @@
 import { Redis } from "@upstash/redis";
+import type { PlayerState } from "@/types/story";
+import {
+  type StoredProgress,
+  toProgressSummary,
+} from "@/lib/store/progress-types";
+
+export type { StoredProgress, ProgressSummary } from "@/lib/store/progress-types";
+export { toProgressSummary };
 
 export interface StoredPlayer {
   id: string;
@@ -6,21 +14,6 @@ export interface StoredPlayer {
   executorName: string | null;
   createdAt: string;
   lastSeenAt: string;
-}
-
-export interface StoredProgress {
-  storyId: string;
-  playerId: string;
-  phase: string;
-  currentNodeId: string;
-  stats: { legal: number; empathy: number; suspicion: number };
-  choiceHistory: string[];
-  flags: string[];
-  endingId: string | null;
-  verdictChoiceId: string | null;
-  startedAt: string;
-  completedAt: string | null;
-  updatedAt: string;
 }
 
 export interface RegisteredPlayerRow {
@@ -110,6 +103,13 @@ export async function upsertPlayer(
   return player;
 }
 
+export async function getPlayer(
+  playerId: string
+): Promise<StoredPlayer | null> {
+  const r = getRedis();
+  return r.get<StoredPlayer>(KEYS.player(playerId));
+}
+
 export async function getPlayerByEmail(
   email: string
 ): Promise<string | null> {
@@ -142,6 +142,29 @@ export async function getPlayerProgressSummary(
       (progress.choiceHistory.length > 0 || progress.phase !== "intro");
 
     result[storyId] = { completed, inProgress };
+  }
+
+  return result;
+}
+
+export async function getPlayerFullSaves(
+  playerId: string,
+  storyIds: string[]
+): Promise<Record<string, PlayerState | null>> {
+  const r = getRedis();
+  const result: Record<string, PlayerState | null> = {};
+
+  for (const storyId of storyIds) {
+    const raw = await r.get<StoredProgress>(KEYS.progress(storyId, playerId));
+    if (
+      raw &&
+      Array.isArray((raw as PlayerState).viewedNodes) &&
+      typeof (raw as PlayerState).nodeChoices === "object"
+    ) {
+      result[storyId] = raw as PlayerState;
+    } else {
+      result[storyId] = null;
+    }
   }
 
   return result;

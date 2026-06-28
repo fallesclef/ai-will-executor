@@ -15,6 +15,32 @@ export interface ChangelogRelease {
 /** Newest first. Add a release here whenever you ship an update. */
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: "0.2.2",
+    date: "2026-06-28",
+    items: [
+      {
+        type: "feature",
+        zh: "Email 玩家：完整存檔上傳雲端，大廳可「還原至本機」接續進度",
+        en: "Email players: full saves sync to cloud; lobby offers restore to this device",
+      },
+      {
+        type: "improvement",
+        zh: "全程自動存檔：本機即時保存，Email 玩家遊玩中自動上雲，無須手動存檔鍵",
+        en: "Fully automatic saves: instant local writes; email players auto-upload while playing—no save button",
+      },
+      {
+        type: "improvement",
+        zh: "還原時以較新的 updatedAt 為準；同一版本雲端存檔可選「稍後再說」",
+        en: "Restore prefers newer updatedAt; dismiss hides the same cloud snapshot until it changes",
+      },
+      {
+        type: "improvement",
+        zh: "玩法說明更新：自動存檔、雲端備份與跨裝置還原流程",
+        en: "How-to-play updated: auto-save, cloud backup, and cross-device restore flow",
+      },
+    ],
+  },
+  {
     version: "0.2.1",
     date: "2026-06-28",
     items: [

@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import type { PlayerState } from "@/types/story";
-import { isStoreEnabled, saveProgress } from "@/lib/store/redis";
+import {
+  getPlayer,
+  getPlayerByEmail,
+  isStoreEnabled,
+  saveProgress,
+  toProgressSummary,
+} from "@/lib/store/redis";
 
 export async function POST(request: Request) {
   try {
@@ -24,22 +30,11 @@ export async function POST(request: Request) {
     }
 
     const { state, event } = body;
+    const player = await getPlayer(state.playerId);
+    const payload = player?.email ? state : toProgressSummary(state);
 
     await saveProgress(
-      {
-        storyId: state.storyId,
-        playerId: state.playerId,
-        phase: state.phase,
-        currentNodeId: state.currentNodeId,
-        stats: state.stats,
-        choiceHistory: state.choiceHistory,
-        flags: state.flags,
-        endingId: state.endingId,
-        verdictChoiceId: state.verdictChoiceId,
-        startedAt: state.startedAt,
-        completedAt: state.completedAt,
-        updatedAt: state.updatedAt,
-      },
+      payload,
       event
         ? {
             type: event.type,
@@ -49,7 +44,11 @@ export async function POST(request: Request) {
         : undefined
     );
 
-    return NextResponse.json({ ok: true, storeEnabled: true });
+    return NextResponse.json({
+      ok: true,
+      storeEnabled: true,
+      fullSave: !!player?.email,
+    });
   } catch (error) {
     console.error("[api/sync]", error);
     return NextResponse.json({ error: "server error" }, { status: 500 });

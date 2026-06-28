@@ -23,7 +23,7 @@ const en: Messages = {
     subtitle: "Digital Probate Division · Case Lobby",
     accountTitle: "Executor Identity",
     accountHint:
-      "Play without signing in. Link an email to sync Completed / In progress in the lobby—not full save restore across devices.",
+      "Play without signing in. Link an email to sync full saves and restore them in the lobby.",
     emailPlaceholder: "email@example.com (optional)",
     register: "Register / Link",
     linkedAccount: "Linked account: {email}",
@@ -44,7 +44,19 @@ const en: Messages = {
     replayCase: "Replay case",
     continueCase: "Continue case",
     progressCloudHint:
-      "Cross-device sync is status-only; full saves stay on each device. Cloud save restore is in development.",
+      "Full saves sync to the cloud. Sign in with the same email on another device—the lobby will offer restore.",
+  },
+  cloudRestore: {
+    tag: "CLOUD SAVE",
+    title: "Cloud saves available",
+    summary:
+      "{total} case(s) can be restored ({completed} completed · {inProgress} in progress). Restore overwrites older local progress.",
+    itemCompleted: "{caseId} · Completed",
+    itemInProgress: "{caseId} · In progress",
+    more: "+ {count} more…",
+    confirm: "Restore to this device",
+    dismiss: "Not now",
+    done: "Cloud saves restored to this device.",
   },
   howToPlay: {
     tag: "GUIDE",
@@ -61,10 +73,12 @@ const en: Messages = {
     step5:
       "Cases unlock in order: Case 8 requires verdicts in cases 1–7. After an ending, continue to the next case or return to the lobby.",
     step6:
-      "Progress auto-saves in this browser—no email required. Switching devices or clearing browser data starts fresh.",
+      "Auto-save: no manual save button. Reading, choices, navigation, and verdicts instantly save to this browser.",
     step7:
-      "With a linked email, the lobby shows Completed / In progress per case (including on other devices). Full saves cannot be downloaded to a new device yet—you cannot resume the same mid-case progress. Cloud save restore is planned.",
-    tip: "Return to the lobby or reset a case anytime; replay completed cases freely. Cross-device sync is status-only—full save restore is not available yet.",
+      "No email required to play fully. Switching devices or clearing browser data starts fresh locally.",
+    step8:
+      "With a linked email, full saves auto-upload to the cloud within seconds while you play. On a new device, sign in with the same email and tap “Restore to this device” in the lobby—the only manual step.",
+    tip: 'There is no "Save" button—playing auto-saves. Replay completed cases anytime; "Reset Case" clears local progress for that case.',
   },
   changelog: {
     title: "Release Notes",

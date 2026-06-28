@@ -10,6 +10,7 @@ const STEP_KEYS = [
   "howToPlay.step5",
   "howToPlay.step6",
   "howToPlay.step7",
+  "howToPlay.step8",
 ] as const;
 
 export function HowToPlay() {

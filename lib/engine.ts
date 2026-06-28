@@ -467,6 +467,20 @@ function migrateLegacySave(raw: string, storyId: string): PlayerState | null {
   }
 }
 
+/** Normalize localStorage or Redis JSON into PlayerState. */
+export function hydratePlayerState(
+  data: unknown,
+  storyId: string
+): PlayerState | null {
+  if (data == null) return null;
+  try {
+    const raw = typeof data === "string" ? data : JSON.stringify(data);
+    return migrateLegacySave(raw, storyId);
+  } catch {
+    return null;
+  }
+}
+
 export function loadGame(storyId: string): PlayerState | null {
   if (typeof window === "undefined") return null;
   try {
