@@ -2,6 +2,7 @@
 
 import { useLocale } from "@/lib/i18n/context";
 import type { Locale } from "@/lib/i18n/types";
+import { trackLocaleChange } from "@/lib/analytics/events";
 
 export function LanguageSwitcher({ className = "" }: { className?: string }) {
   const { locale, setLocale, t } = useLocale();
@@ -17,7 +18,12 @@ export function LanguageSwitcher({ className = "" }: { className?: string }) {
           key={code}
           type="button"
           className={`lang-switcher__btn${locale === code ? " lang-switcher__btn--active" : ""}`}
-          onClick={() => setLocale(code)}
+          onClick={() => {
+            if (code !== locale) {
+              setLocale(code);
+              trackLocaleChange(code);
+            }
+          }}
           aria-pressed={locale === code}
         >
           {code === "zh-TW" ? t("language.zhTW") : t("language.en")}

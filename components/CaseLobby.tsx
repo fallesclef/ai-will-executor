@@ -26,6 +26,7 @@ import { useLocale } from "@/lib/i18n/context";
 import { listCases } from "@/data/cases";
 import { isStoryAvailableInLocale } from "@/lib/i18n/locale";
 import { resonanceTierLabel } from "@/lib/i18n/resonance-ui";
+import { trackEmailRegister } from "@/lib/analytics/events";
 
 export function CaseLobby() {
   const { locale, t } = useLocale();
@@ -57,6 +58,7 @@ export function CaseLobby() {
       hasExecutorName() ? getExecutorName() : undefined
     );
     if (result.email) setLocalPlayerEmail(result.email);
+    trackEmailRegister(!!result.email);
     setStatus(
       result.email
         ? t("lobby.linkedAccount", { email: result.email })

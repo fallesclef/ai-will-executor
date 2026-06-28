@@ -13,6 +13,7 @@ import {
   markChangelogSeen,
 } from "@/lib/changelog/client";
 import { useLocale } from "@/lib/i18n/context";
+import { trackChangelogView } from "@/lib/analytics/events";
 
 function formatReleaseDate(date: string, locale: string): string {
   try {
@@ -81,6 +82,7 @@ export function ChangelogPanel() {
     setOpen(true);
     markChangelogSeen(latestVersion);
     setUnread(false);
+    trackChangelogView(latestVersion);
   };
 
   const handleDismiss = () => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
 import type { Story, PlayerState, Choice } from "@/types/story";
 import {
@@ -41,6 +41,14 @@ import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { StoryLocaleBanner } from "@/components/StoryLocaleBanner";
 import { useLocale } from "@/lib/i18n/context";
 import { useReadingScrollAnchor } from "@/lib/use-reading-scroll";
+import {
+  trackCaseComplete,
+  trackCaseReset,
+  trackCaseStart,
+  trackChoiceMade,
+  trackNodeView,
+  trackVerdictSubmitted,
+} from "@/lib/analytics/events";
 
 interface GameShellProps {
   caseId: string;
@@ -102,6 +110,7 @@ function GameShellInner({ story }: { story: Story }) {
     story,
     hydrated && nameReady
   );
+  const caseStartedRef = useRef(false);
 
   useEffect(() => {
     void registerPlayer(
@@ -117,6 +126,19 @@ function GameShellInner({ story }: { story: Story }) {
   }, [story.id]);
 
   useEffect(() => {
+    if (!hydrated || !nameReady || caseStartedRef.current) return;
+    caseStartedRef.current = true;
+    trackCaseStart(story.id, locale);
+  }, [hydrated, nameReady, story.id, locale]);
+
+  useEffect(() => {
+    if (!hydrated || !nameReady) return;
+    const node = story.nodes[state.currentNodeId];
+    if (!node) return;
+    trackNodeView(story.id, state.currentNodeId, node.category);
+  }, [hydrated, nameReady, state.currentNodeId, story]);
+
+  useEffect(() => {
     if (hydrated) {
       saveGame(state);
       queueSync(state);
@@ -130,15 +152,20 @@ function GameShellInner({ story }: { story: Story }) {
         if (action.type === "CHOICE") {
           queueSync(next, {
             type: "choice",
-            nodeId: next.currentNodeId,
+            nodeId: prev.currentNodeId,
             choiceId: action.choiceId,
           });
+          trackChoiceMade(story.id, prev.currentNodeId, action.choiceId);
         } else if (action.type === "VERDICT") {
           queueSync(next, {
             type: "complete",
             choiceId: action.choiceId,
             endingId: next.endingId ?? undefined,
           });
+          trackVerdictSubmitted(story.id, action.choiceId);
+          if (next.endingId) {
+            trackCaseComplete(story.id, next.endingId);
+          }
         } else if (action.type === "NAVIGATE") {
           queueSync(next, { type: "navigate", nodeId: action.nodeId });
         }
@@ -183,6 +210,7 @@ function GameShellInner({ story }: { story: Story }) {
   };
 
   const handleReset = () => {
+    trackCaseReset(story.id);
     clearSave(story.id);
     setState(createInitialState(story, state.playerId));
   };

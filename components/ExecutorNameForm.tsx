@@ -13,6 +13,7 @@ import {
   registerPlayer,
 } from "@/lib/player/client";
 import { useLocale } from "@/lib/i18n/context";
+import { trackExecutorNameSet } from "@/lib/analytics/events";
 
 interface ExecutorNameFormProps {
   variant?: "lobby" | "gate";
@@ -38,6 +39,7 @@ export function ExecutorNameForm({
     const saved = setExecutorName(trimmed);
     setName(saved);
     setError(null);
+    trackExecutorNameSet();
     void registerPlayer(getLocalPlayerEmail() ?? undefined, saved);
     onSaved?.(saved);
   };
