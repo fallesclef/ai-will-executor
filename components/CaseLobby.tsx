@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useState, useEffect, useCallback } from "react";
 import type { CaseMeta } from "@/types/story";
 import {
@@ -134,8 +135,17 @@ export function CaseLobby() {
           <span className="lobby__sys">{t("common.sys")}</span>
           <LanguageSwitcher />
         </div>
-        <h1 className="lobby__title">{t("lobby.title")}</h1>
-        <p className="lobby__subtitle">{t("lobby.subtitle")}</p>
+        <div className="lobby__brand">
+          <Image
+            src="/logo.png"
+            alt={t("lobby.title")}
+            width={1024}
+            height={1024}
+            className="lobby__logo"
+            priority
+          />
+          <p className="lobby__subtitle">{t("lobby.subtitle")}</p>
+        </div>
       </header>
 
       <ChangelogPanel />
