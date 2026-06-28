@@ -23,7 +23,7 @@ const en: Messages = {
     subtitle: "Digital Probate Division · Case Lobby",
     accountTitle: "Executor Identity",
     accountHint:
-      "Play without signing in. Link an email to sync Completed / In progress badges across devices.",
+      "Play without signing in. Link an email to sync Completed / In progress in the lobby—not full save restore across devices.",
     emailPlaceholder: "email@example.com (optional)",
     register: "Register / Link",
     linkedAccount: "Linked account: {email}",
@@ -44,7 +44,7 @@ const en: Messages = {
     replayCase: "Replay case",
     continueCase: "Continue case",
     progressCloudHint:
-      "Email linked: cases finished on any device show as Completed in the lobby. Full saves stay on each device; cloud save restore is in development.",
+      "Cross-device sync is status-only; full saves stay on each device. Cloud save restore is in development.",
   },
   howToPlay: {
     tag: "GUIDE",
@@ -61,10 +61,10 @@ const en: Messages = {
     step5:
       "Cases unlock in order: Case 8 requires verdicts in cases 1–7. After an ending, continue to the next case or return to the lobby.",
     step6:
-      "Progress auto-saves in this browser. No email required to play; switching devices or clearing browser data starts fresh.",
+      "Progress auto-saves in this browser—no email required. Switching devices or clearing browser data starts fresh.",
     step7:
-      "With a linked email, the lobby shows Completed / In progress per case (including finishes on other devices). Full saves are not restored across devices yet—cloud save restore is planned.",
-    tip: 'Return to the lobby or "Reset Case" anytime. Replay completed cases freely; cross-device sync is status-only for now, not mid-case save restore.',
+      "With a linked email, the lobby shows Completed / In progress per case (including on other devices). Full saves cannot be downloaded to a new device yet—you cannot resume the same mid-case progress. Cloud save restore is planned.",
+    tip: "Return to the lobby or reset a case anytime; replay completed cases freely. Cross-device sync is status-only—full save restore is not available yet.",
   },
   changelog: {
     title: "Release Notes",

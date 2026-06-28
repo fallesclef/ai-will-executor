@@ -30,8 +30,8 @@ export const CHANGELOG: ChangelogRelease[] = [
       },
       {
         type: "improvement",
-        zh: "玩法說明補充：完整存檔留本機，跨裝置目前僅同步狀態；「雲端還原存檔」規劃中",
-        en: "How-to-play clarifies: full saves stay local; cross-device is status-only; cloud save restore planned",
+        zh: "玩法說明更新：釐清「本機完整存檔」與「Email 跨裝置狀態同步」的差異；雲端還原存檔規劃中",
+        en: "How-to-play clarifies local full saves vs. email cross-device status sync; cloud save restore planned",
       },
     ],
   },
