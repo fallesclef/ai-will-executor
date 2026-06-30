@@ -15,6 +15,17 @@ export interface ChangelogRelease {
 /** Newest first. Add a release here whenever you ship an update. */
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: "0.2.4",
+    date: "2026-06-30",
+    items: [
+      {
+        type: "fix",
+        zh: "修復大廳無限重新整理導致頁面卡死、無法進入案件的問題",
+        en: "Fix lobby infinite refresh loop that froze the page and blocked case entry",
+      },
+    ],
+  },
+  {
     version: "0.2.3",
     date: "2026-06-28",
     items: [

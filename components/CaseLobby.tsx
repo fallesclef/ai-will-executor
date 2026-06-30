@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import type { CaseMeta } from "@/types/story";
 import {
   getLocalPlayerEmail,
@@ -54,8 +54,8 @@ const SEASON_PREREQ_IDS = [
 
 export function CaseLobby() {
   const { locale, t } = useLocale();
-  const cases = listCases(locale);
-  const caseIds = cases.map((c) => c.id);
+  const cases = useMemo(() => listCases(locale), [locale]);
+  const caseIds = useMemo(() => cases.map((c) => c.id), [cases]);
   const [email, setEmail] = useState(getLocalPlayerEmail() ?? "");
   const [status, setStatus] = useState<string | null>(null);
   const [seasonReady, setSeasonReady] = useState(false);
