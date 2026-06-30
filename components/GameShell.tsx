@@ -24,7 +24,7 @@ import { StatusPanel } from "@/components/StatusPanel";
 import { NodeView } from "@/components/NodeView";
 import { CaseDashboard } from "@/components/CaseDashboard";
 import { getLocalPlayerId, registerPlayer } from "@/lib/player/client";
-import { queueSync } from "@/lib/sync/client";
+import { queueSync, flushSyncPending } from "@/lib/sync/client";
 import { getNextCase, getStory, listCases } from "@/data/cases";
 import { hasCompletedRequiredCases, shouldShowResonancePanel } from "@/lib/resonance";
 import { ResonancePanel } from "@/components/ResonancePanel";
@@ -141,9 +141,22 @@ function GameShellInner({ story }: { story: Story }) {
   useEffect(() => {
     if (hydrated) {
       saveGame(state);
-      queueSync(state);
     }
   }, [state, hydrated]);
+
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "hidden") flushSyncPending();
+    };
+    const onPageHide = () => flushSyncPending();
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    window.addEventListener("pagehide", onPageHide);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.removeEventListener("pagehide", onPageHide);
+      flushSyncPending();
+    };
+  }, []);
 
   const dispatch = useCallback(
     (action: Parameters<typeof gameReducer>[1]) => {

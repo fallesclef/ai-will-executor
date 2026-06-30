@@ -12,6 +12,8 @@ export async function fetchLobbyCaseStatuses(
 ): Promise<Record<string, CaseLobbyStatus>> {
   const local = getLocalLobbyStatuses(caseIds);
 
+  if (!getLocalPlayerEmail()) return local;
+
   try {
     const res = await fetch("/api/progress", {
       method: "POST",

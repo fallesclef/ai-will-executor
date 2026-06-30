@@ -28,7 +28,7 @@ const en: Messages = {
     register: "Register / Link",
     linkedAccount: "Linked account: {email}",
     anonymousIdentity:
-      "Anonymous play identity created (progress still syncs to analytics).",
+      "Anonymous play identity created (progress saved locally only, not synced to cloud).",
     casesTitle: "Available Cases",
     resonance: "System Resonance {percent}% · Tier {tier}",
     comingSoon: "Coming soon",
@@ -75,9 +75,9 @@ const en: Messages = {
     step6:
       "Auto-save: no manual save button. Reading, choices, navigation, and verdicts instantly save to this browser.",
     step7:
-      "No email required to play fully. Switching devices or clearing browser data starts fresh locally.",
+      "No email required to play fully. Progress stays local only (not synced to cloud). Switching devices or clearing browser data starts fresh.",
     step8:
-      "With a linked email, full saves auto-upload to the cloud within seconds while you play. On a new device, sign in with the same email and tap “Restore to this device” in the lobby—the only manual step.",
+      "With a linked email, choices, navigation, and verdicts auto-upload to the cloud (navigation is debounced; leaving the tab flushes pending saves). On a new device, sign in and tap “Restore to this device” in the lobby.",
     tip: 'There is no "Save" button—playing auto-saves. Replay completed cases anytime; "Reset Case" clears local progress for that case.',
   },
   changelog: {

@@ -69,6 +69,8 @@ const KEYS = {
     `awe:stat:ending:${storyId}:${endingId}`,
   complete: (storyId: string) => `awe:stat:complete:${storyId}`,
   storyPlayers: (storyId: string) => `awe:stat:story:${storyId}:players`,
+  choiceIndex: (storyId: string) => `awe:idx:choice:${storyId}`,
+  endingIndex: "awe:idx:ending",
 };
 
 export async function upsertPlayer(
@@ -186,13 +188,16 @@ export async function saveProgress(
 
   if (event?.choiceId) {
     await r.incr(KEYS.choice(storyId, event.choiceId));
+    await r.sadd(KEYS.choiceIndex(storyId), event.choiceId);
   }
 
   if (event?.type === "complete" && progress.endingId) {
     await r.incr(KEYS.complete(storyId));
     await r.incr(KEYS.ending(storyId, progress.endingId));
+    await r.sadd(KEYS.endingIndex, `${storyId}:${progress.endingId}`);
     if (progress.verdictChoiceId) {
       await r.incr(KEYS.choice(storyId, progress.verdictChoiceId));
+      await r.sadd(KEYS.choiceIndex(storyId), progress.verdictChoiceId);
     }
   }
 }
@@ -247,40 +252,31 @@ export async function getAdminStats(): Promise<AdminStats> {
     const storyPlayerIds = (await r.smembers(
       KEYS.storyPlayers(storyId)
     )) as string[];
-    let completeCount = 0;
-    let inProgress = 0;
-
-    for (const pid of storyPlayerIds) {
-      const p = await r.get<StoredProgress>(KEYS.progress(storyId, pid));
-      if (!p) continue;
-      if (p.phase === "ending" && p.completedAt) completeCount++;
-      else inProgress++;
-    }
-
     const completeKey = await r.get<number>(KEYS.complete(storyId));
-    completeCount = Math.max(completeCount, completeKey ?? 0);
+    const completeCount = completeKey ?? 0;
 
     byStory[storyId] = {
       players: storyPlayerIds.length,
       completions: completeCount,
-      inProgress,
+      inProgress: Math.max(0, storyPlayerIds.length - completeCount),
     };
+
+    const choiceIds = (await r.smembers(
+      KEYS.choiceIndex(storyId)
+    )) as string[];
+    for (const choiceId of choiceIds) {
+      const val = await r.get<number>(KEYS.choice(storyId, choiceId));
+      choices[`${storyId}/${choiceId}`] = val ?? 0;
+    }
   }
 
-  const keys = await r.keys("awe:stat:choice:*");
-  for (const key of keys) {
-    const val = await r.get<number>(key);
-    const parts = key.split(":");
-    const choiceId = parts.slice(4).join(":");
-    const storyId = parts[3];
-    choices[`${storyId}/${choiceId}`] = val ?? 0;
-  }
-
-  const endingKeys = await r.keys("awe:stat:ending:*");
-  for (const key of endingKeys) {
-    const val = await r.get<number>(key);
-    const parts = key.split(":");
-    const endingId = parts.slice(4).join(":");
+  const endingRefs = (await r.smembers(KEYS.endingIndex)) as string[];
+  for (const ref of endingRefs) {
+    const sep = ref.indexOf(":");
+    if (sep < 0) continue;
+    const storyId = ref.slice(0, sep);
+    const endingId = ref.slice(sep + 1);
+    const val = await r.get<number>(KEYS.ending(storyId, endingId));
     verdicts[endingId] = val ?? 0;
   }
 

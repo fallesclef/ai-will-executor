@@ -25,7 +25,7 @@ const zhTW = {
     emailPlaceholder: "email@example.com（選填）",
     register: "註冊 / 連結",
     linkedAccount: "已連結帳號：{email}",
-    anonymousIdentity: "已建立匿名試玩身分（進度仍會同步至後台）",
+    anonymousIdentity: "已建立匿名試玩身分（進度僅存本機，不寫入雲端）",
     casesTitle: "可審理案件",
     resonance: "系統共振 {percent}% · 階段 {tier}",
     comingSoon: "籌備中",
@@ -72,9 +72,9 @@ const zhTW = {
     step6:
       "【自動存檔】無須手動存檔：閱讀、選擇、切換節點或提交裁決後，進度會即時寫入本機瀏覽器。",
     step7:
-      "未註冊 Email 也可完整遊玩；換裝置或清除瀏覽資料後，本機進度需從頭開始。",
+      "未註冊 Email 也可完整遊玩，進度僅存本機、不寫入雲端；換裝置或清除瀏覽資料後需從頭開始。",
     step8:
-      "註冊 Email 後，完整存檔會在遊玩中自動上傳雲端（約數秒）。換裝置以同一 Email 登入，大廳按「還原至本機」即可接關——還原是唯一需手動確認的步驟。",
+      "註冊 Email 後，選擇、導航與裁決時會自動上傳雲端存檔（導航會短暫合併，離開分頁時補送）。換裝置以同一 Email 登入，大廳按「還原至本機」即可接關。",
     tip: "沒有「存檔」按鈕；玩就是自動存。已審理案件可再次遊玩；「重置案件」會清除本機該案進度。",
   },
   changelog: {

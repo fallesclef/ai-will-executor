@@ -15,6 +15,27 @@ export interface ChangelogRelease {
 /** Newest first. Add a release here whenever you ship an update. */
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: "0.2.3",
+    date: "2026-06-28",
+    items: [
+      {
+        type: "improvement",
+        zh: "大幅降低 Redis 用量：匿名玩家僅本機存檔；Email 玩家僅在選擇／導航／裁決時同步",
+        en: "Cut Redis usage: anonymous local-only saves; email players sync on choice, navigate, verdict only",
+      },
+      {
+        type: "improvement",
+        zh: "移除每次 state 變動的雲端 sync；導航改為延遲合併，離開分頁時補送",
+        en: "Removed sync on every state tick; debounced navigate sync with flush on tab leave",
+      },
+      {
+        type: "improvement",
+        zh: "後台統計改為索引查詢，不再掃描全庫 KEYS",
+        en: "Admin stats use key indexes instead of full KEYS scans",
+      },
+    ],
+  },
+  {
     version: "0.2.2",
     date: "2026-06-28",
     items: [
